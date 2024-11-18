@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Navigation } from '../components/layout/Navigation';
-import { Card, CardContent } from "../components/ui/card";
+import { Card, CardContent } from "../components/ui/Card";
 import { 
   IconBrain,
   IconRocket,
