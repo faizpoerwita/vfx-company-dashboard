@@ -1,26 +1,24 @@
 import { useEffect, useRef } from 'react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { Card } from "@/components/ui/card";
-
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+import { Bar } from 'react-chartjs-2';
+import type { ChartJS } from 'chart.js';
 
 const analyticsData = {
   labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
   datasets: [
     {
-      label: 'Completed Projects',
-      data: [12, 15, 18, 14, 20, 17],
-      backgroundColor: 'rgba(34, 197, 94, 0.8)',
-      borderColor: 'rgba(34, 197, 94, 1)',
+      label: 'Projects Completed',
+      data: [12, 19, 3, 5, 2, 3],
+      backgroundColor: 'rgba(129, 140, 248, 0.5)',
+      borderColor: 'rgb(129, 140, 248)',
       borderWidth: 1,
     },
     {
-      label: 'Active Projects',
-      data: [8, 10, 12, 15, 10, 13],
-      backgroundColor: 'rgba(59, 130, 246, 0.8)',
-      borderColor: 'rgba(59, 130, 246, 1)',
+      label: 'New Projects',
+      data: [8, 15, 7, 9, 4, 6],
+      backgroundColor: 'rgba(52, 211, 153, 0.5)',
+      borderColor: 'rgb(52, 211, 153)',
       borderWidth: 1,
     }
   ]
@@ -84,6 +82,4 @@ export const AnalyticsSection = () => {
       </BackgroundGradient>
     </div>
   );
-}
-
-export default AnalyticsSection;
+};

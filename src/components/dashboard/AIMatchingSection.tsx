@@ -1,7 +1,6 @@
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { Card } from "@/components/ui/card";
 import { IconBrain, IconStars } from '@tabler/icons-react';
-import { HoverEffect } from "@/components/ui/hover-effect";
 
 const matchedProjects = [
   {
