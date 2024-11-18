@@ -1,18 +1,36 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
 
-// Middleware
-app.use(cors({
+// CORS configuration
+const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight request for 10 minutes
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.get('origin')}`);
+  next();
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/vfx-dashboard', {
@@ -23,15 +41,23 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/vfx-dashb
 .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/auth', require('./routes/auth'));
-app.use('/projects', require('./routes/projects'));
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const teamRoutes = require('./routes/team');
+const projectRoutes = require('./routes/projects');
+const analyticsRoutes = require('./routes/analytics');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
 app.use('/tasks', require('./routes/tasks'));
 app.use('/resources', require('./routes/resources'));
 app.use('/settings', require('./routes/settings'));
-app.use('/team', require('./routes/team'));
 app.use('/notifications', require('./routes/notifications'));
 app.use('/stats', require('./routes/stats'));
-app.use('/analytics', require('./routes/analytics'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

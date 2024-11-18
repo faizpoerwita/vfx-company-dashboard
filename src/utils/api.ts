@@ -2,85 +2,70 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { toast } from 'react-hot-toast';
 import security from './security';
 
-const BASE_URL = 'http://localhost:5000';  // Removed /api suffix for auth endpoints
+const BASE_URL = import.meta.env.PROD 
+  ? 'https://vfx-company-dashboard.netlify.app/api'
+  : 'http://localhost:5000/api';
 
 // Debug API calls
 const debugAPI = (method: string, url: string, data?: any) => {
   console.log(`[API ${method}] ${url}`, data ? { data } : '');
 };
 
-const api = axios.create({
+// Create axios instance
+const axiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-  },
+  }
 });
 
-// Request interceptor
-api.interceptors.request.use(
+// Add request interceptor
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = security.getToken();
-    
-    // Log request details for debugging
-    console.log('[API Request]', {
-      url: config.url,
-      method: config.method,
-      hasToken: !!token
-    });
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // Remove custom CORS headers from requests
-    delete config.headers['Access-Control-Allow-Origin'];
-    delete config.headers['Access-Control-Allow-Credentials'];
-
-    debugAPI(config.method?.toUpperCase() || 'REQUEST', config.url || '', config.data);
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for better error handling
-api.interceptors.response.use(
+// Add response interceptor
+axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response) {
-      // Server responded with a status code outside the 2xx range
-      console.error('Response error:', error.response.data);
-      if (error.response.status === 401) {
-        // Handle unauthorized error
-        security.clearToken();
-        window.location.href = '/signin';
+    const originalRequest = error.config;
+    
+    // Handle token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return axiosInstance(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
       }
-    } else if (error.request) {
-      // Request was made but no response received
-      console.error('Network error:', error.request);
-    } else {
-      // Something happened in setting up the request
-      console.error('Request setup error:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );
-
-// Cache configuration
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 const API = {
   // Authentication
   async signIn(email: string, password: string) {
     try {
       console.log('Attempting sign in with:', { email });
-      const response = await api.post('/auth/signin', { email, password });
+      const response = await axiosInstance.post('/auth/signin', { email, password });
       console.log('Raw sign in response:', response);
       
       const data = response.data || response;
@@ -123,7 +108,7 @@ const API = {
     lastName: string;
   }) {
     try {
-      const response = await api.post('/auth/signup', userData);
+      const response = await axiosInstance.post('/auth/signup', userData);
       console.log('Registration response:', response);
       return response;
     } catch (error) {
@@ -138,7 +123,7 @@ const API = {
 
   async getProfile() {
     try {
-      const response = await api.get('/auth/profile');
+      const response = await axiosInstance.get('/auth/profile');
       console.log('Raw profile response:', response);
 
       if (!response?.data?.user) {
@@ -174,7 +159,7 @@ const API = {
   async updateProfile(profileData: any) {
     try {
       debugAPI('PUT', '/auth/profile', profileData);
-      const response = await api.put('/auth/profile', profileData);
+      const response = await axiosInstance.put('/auth/profile', profileData);
       
       if (!response?.data) {
         throw new Error('No data received from profile update');
@@ -190,50 +175,50 @@ const API = {
 
   // Projects
   async getProjects(params?: any) {
-    return await api.get('/projects', { params });
+    return await axiosInstance.get('/projects', { params });
   },
 
   async getProject(id: string) {
-    return await api.get(`/projects/${id}`);
+    return await axiosInstance.get(`/projects/${id}`);
   },
 
   async createProject(projectData: any) {
-    return await api.post('/projects', projectData);
+    return await axiosInstance.post('/projects', projectData);
   },
 
   async updateProject(id: string, projectData: any) {
-    return await api.put(`/projects/${id}`, projectData);
+    return await axiosInstance.put(`/projects/${id}`, projectData);
   },
 
   async deleteProject(id: string) {
-    return await api.delete(`/projects/${id}`);
+    return await axiosInstance.delete(`/projects/${id}`);
   },
 
   // Tasks
   async getTasks(params?: any) {
-    return await api.get('/tasks', { params });
+    return await axiosInstance.get('/tasks', { params });
   },
 
   async getTask(id: string) {
-    return await api.get(`/tasks/${id}`);
+    return await axiosInstance.get(`/tasks/${id}`);
   },
 
   async createTask(taskData: any) {
-    return await api.post('/tasks', taskData);
+    return await axiosInstance.post('/tasks', taskData);
   },
 
   async updateTask(id: string, taskData: any) {
-    return await api.put(`/tasks/${id}`, taskData);
+    return await axiosInstance.put(`/tasks/${id}`, taskData);
   },
 
   async deleteTask(id: string) {
-    return await api.delete(`/tasks/${id}`);
+    return await axiosInstance.delete(`/tasks/${id}`);
   },
 
   // Dashboard Statistics
   async getProjectStats() {
     try {
-      const response = await api.get('/stats/projects');
+      const response = await axiosInstance.get('/stats/projects');
       
       if (!response?.data) {
         console.warn('No project stats data received');
@@ -281,115 +266,115 @@ const API = {
       return cached.data;
     }
 
-    const data = await api.get('/stats/tasks');
+    const data = await axiosInstance.get('/stats/tasks');
     cache.set(cacheKey, { data, timestamp: Date.now() });
     return data;
   },
 
   // Team Management
   async getTeamMembers() {
-    return await api.get('/team/members');
+    return await axiosInstance.get('/team/members');
   },
 
   async updateTeamMember(id: string, memberData: any) {
-    return await api.put(`/team/members/${id}`, memberData);
+    return await axiosInstance.put(`/team/members/${id}`, memberData);
   },
 
   // Notifications
   async getNotifications() {
-    return await api.get('/notifications');
+    return await axiosInstance.get('/notifications');
   },
 
   async markNotificationAsRead(id: string) {
-    return await api.put(`/notifications/${id}/read`);
+    return await axiosInstance.put(`/notifications/${id}/read`);
   },
 
   async clearNotifications() {
-    return await api.delete('/notifications');
+    return await axiosInstance.delete('/notifications');
   },
 
   // Analytics
-  getAnalytics: {
+  analytics: {
     roleDistribution: async () => {
       try {
-        const response = await api.get('/api/analytics/role-distribution');
+        const response = await axiosInstance.get('/api/analytics/role-distribution');
         return response.data;
       } catch (error) {
-        console.error('Error fetching role distribution:', error);
+        handleApiError(error);
         throw error;
       }
     },
+
+    getUsersByRole: async (role: string) => {
+      try {
+        const response = await axiosInstance.get(`/api/analytics/users-by-role/${encodeURIComponent(role)}`);
+        return response.data;
+      } catch (error) {
+        handleApiError(error);
+        throw error;
+      }
+    },
+
     experienceDistribution: async () => {
-      try {
-        const response = await api.get('/api/analytics/experience-distribution');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching experience distribution:', error);
-        throw error;
-      }
+      return API.get('/api/analytics/experience-distribution');
     },
+
     skillsDistribution: async () => {
-      try {
-        const response = await api.get('/api/analytics/skills-distribution');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching skills distribution:', error);
-        throw error;
-      }
+      return API.get('/api/analytics/skills-distribution');
     },
+
     workPreferences: async () => {
-      try {
-        const response = await api.get('/api/analytics/work-preferences');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching work preferences:', error);
-        throw error;
-      }
+      return API.get('/api/analytics/work-preferences');
     },
+
     dislikedAreas: async () => {
-      try {
-        const response = await api.get('/api/analytics/disliked-areas');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching disliked areas:', error);
-        throw error;
-      }
+      return API.get('/api/analytics/disliked-areas');
     },
-    test: async () => {
-      try {
-        const response = await api.get('/api/analytics/test');
-        return response.data;
-      } catch (error) {
-        console.error('Error testing analytics route:', error);
-        throw error;
-      }
+
+    departmentDistribution: async () => {
+      return API.get('/api/analytics/department-distribution');
     }
   },
 
-  // Generic request method with caching
-  async get<T>(url: string, config?: any) {
-    const cacheKey = url + JSON.stringify(config?.params || {});
-    const cached = cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data as T;
+  // Generic request methods
+  async get(url: string, config = {}) {
+    try {
+      const response = await axiosInstance.get(url, config);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
     }
-
-    const data = await api.get<T>(url, config);
-    cache.set(cacheKey, { data, timestamp: Date.now() });
-    return data;
   },
 
-  async post<T>(url: string, data?: any, config?: any) {
-    return await api.post<T>(url, data, config);
+  async post(url: string, data?: any, config = {}) {
+    try {
+      const response = await axiosInstance.post(url, data, config);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
-  async put<T>(url: string, data?: any, config?: any) {
-    return await api.put<T>(url, data, config);
+  async put(url: string, data?: any, config = {}) {
+    try {
+      const response = await axiosInstance.put(url, data, config);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
-  async delete(url: string, config?: any) {
-    return await api.delete(url, config);
+  async delete(url: string, config = {}) {
+    try {
+      const response = await axiosInstance.delete(url, config);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+      throw error;
+    }
   },
 
   // Cache management
@@ -422,7 +407,7 @@ const handleApiError = (error: any) => {
 // Token refresh function
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    const response = await api.post('/auth/refresh');
+    const response = await axiosInstance.post('/auth/refresh');
     return response.data.token;
   } catch (error) {
     console.error('Token refresh failed:', error);
@@ -430,4 +415,5 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+export { API as api };
 export default API;

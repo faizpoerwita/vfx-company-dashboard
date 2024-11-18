@@ -328,6 +328,53 @@ api.register(userData)         // ❌ Incorrect
 
 ```
 
+## 🔍 Analytics System
+
+### API Endpoint Conventions
+
+All analytics endpoints follow these conventions:
+- Base path: `/api/analytics/`
+- HTTP Method: GET for data retrieval
+- Authentication: Required via auth middleware
+- Response format:
+  ```javascript
+  {
+    success: boolean,
+    data: any,
+    error?: string
+  }
+  ```
+
+### Analytics Endpoints
+
+```javascript
+GET /api/analytics/role-distribution      // Get user count by role
+GET /api/analytics/users-by-role/:role    // Get users in specific role
+GET /api/analytics/experience-distribution // Get experience levels
+GET /api/analytics/skills-distribution    // Get skills breakdown
+GET /api/analytics/work-preferences       // Get work preference stats
+GET /api/analytics/disliked-areas         // Get disliked work areas
+GET /api/analytics/department-distribution // Get department stats
+```
+
+### URL Parameter Encoding
+- All URL parameters must be properly encoded using `encodeURIComponent()`
+- Special characters in role names and other parameters are safely handled
+- Example:
+  ```javascript
+  // Correct
+  `/api/analytics/users-by-role/${encodeURIComponent('Senior VFX Artist')}`
+  
+  // Incorrect
+  `/api/analytics/users-by-role/Senior VFX Artist`
+  ```
+
+### Error Handling
+- All endpoints use consistent error response format
+- HTTP status codes are properly set
+- Detailed error messages in development
+- Sanitized error messages in production
+
 ## 📊 Analytics Page
 
 ### Component Structure

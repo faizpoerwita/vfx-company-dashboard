@@ -191,6 +191,113 @@ router.get('/disliked-areas', auth, async (req, res) => {
   }
 });
 
+// Get department distribution
+router.get('/department-distribution', auth, async (req, res) => {
+  try {
+    console.log('Fetching department distribution...');
+    
+    // Get total users
+    const totalUsers = await User.countDocuments();
+    
+    // Get role distribution
+    const roleDistribution = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get department stats
+    const departmentStats = await User.aggregate([
+      {
+        $group: {
+          _id: '$department',
+          count: { $sum: 1 },
+          roles: {
+            $push: '$role'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          count: 1,
+          roleBreakdown: {
+            $reduce: {
+              input: '$roles',
+              initialValue: {},
+              in: {
+                $mergeObjects: [
+                  '$$value',
+                  {
+                    $literal: {
+                      $concat: [
+                        '{"',
+                        '$$this',
+                        '": 1}'
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    console.log('Department stats:', {
+      totalUsers,
+      roleDistribution,
+      departmentStats
+    });
+
+    if (!Array.isArray(departmentStats)) {
+      throw new Error('Invalid department stats format');
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        totalUsers,
+        roleDistribution,
+        departments: departmentStats
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching department distribution:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat mengambil data distribusi departemen',
+      error: error.message
+    });
+  }
+});
+
+// Get users by role
+router.get('/users-by-role/:role', auth, async (req, res) => {
+  try {
+    console.log('Fetching users by role:', req.params.role);
+    const users = await User.find(
+      { role: req.params.role },
+      'firstName lastName email role department status' // Only select needed fields
+    ).sort({ firstName: 1, lastName: 1 });
+
+    console.log(`Found ${users.length} users for role:`, req.params.role);
+
+    return res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Error fetching users by role:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching users by role',
+      error: error.message
+    });
+  }
+});
+
 // Debug endpoint
 router.get('/test', (req, res) => {
   console.log('Test endpoint accessed');

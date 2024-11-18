@@ -1,5 +1,96 @@
 # Changelog
 
+## [1.0.21] - 2024-01-19
+
+### Fixed
+- Analytics API Integration
+  - Fixed 404 errors in analytics endpoints
+  - Added `/api` prefix to all analytics routes
+  - Improved error handling in API utility functions
+  - Added proper URL encoding for role parameters
+  - Removed duplicate getUsersByRole method
+  - Standardized analytics endpoint structure
+
+### Technical Details
+- Updated API utility endpoints to match backend routes
+- Enhanced error handling in analytics API calls
+- Improved code organization and removed redundancies
+- Added proper parameter encoding for special characters
+
+## [1.0.20] - 2024-01-19
+
+### Added
+- Role Users View Feature
+  - New endpoint `/api/analytics/users-by-role/:role`
+  - Modal component to display users by role
+  - Interactive member count in Department Overview
+  - Detailed user information display
+
+### Fixed
+- API endpoint paths standardization
+- Backend route registration
+- Error handling in user fetching
+
+### Technical Details
+- Added new API utility function for fetching users by role
+- Improved error handling and loading states
+- Standardized API endpoint paths under `/api` prefix
+
+## [1.0.19] - 2024-01-19
+
+### Changed
+- Department Overview UI Enhancement
+  - Updated card design to match Team page style
+  - Added department initials with gradient background
+  - Enhanced layout and typography
+  - Improved information hierarchy
+  - Added interactive elements
+
+### Technical Details
+- Analytics Page Component (/src/pages/Analytics.tsx)
+  - Added MovingBorder for section header
+  - Implemented Team page card design
+  - Enhanced responsive grid layout
+  - Added hover states and transitions
+  - Improved accessibility with semantic HTML
+
+### UI/UX
+- Consistent design language with Team page
+- Better visual hierarchy of information
+- Enhanced readability with proper spacing
+- Interactive elements for future expansion
+- Improved mobile responsiveness
+
+## [1.0.18] - 2024-01-19
+
+### Added
+- Department Overview Section in Analytics Page
+  - Added new department distribution endpoint in backend
+  - Created department overview cards with member count
+  - Display average experience per department
+  - Show top skills for each department
+  - Responsive grid layout for department cards
+
+### Technical Details
+- Backend Updates (/backend/src/routes/analytics.js)
+  - Added `/analytics/department-distribution` endpoint
+  - Implemented MongoDB aggregation for department stats
+  - Added average experience calculation
+  - Added top skills extraction
+
+- Frontend Updates
+  - Enhanced Analytics page with department section
+  - Updated useAnalytics hook for department data
+  - Added new API endpoint in api.ts
+  - Implemented responsive department cards
+  - Added new department data types
+
+### UI/UX
+- Clean department overview cards
+- Visual hierarchy for department information
+- Color-coded member count and skills
+- Consistent styling with existing components
+
 ## [1.0.17] - 2024-01-19
 
 ### Changed

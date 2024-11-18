@@ -28,6 +28,18 @@ interface AnalyticsData {
     _id: string;
     count: number;
   }>;
+  departmentDistribution: {
+    totalUsers: number;
+    roleDistribution: {
+      _id: string;
+      count: number;
+    }[];
+    departments: {
+      _id: string;
+      count: number;
+      roleBreakdown: Record<string, number>;
+    }[];
+  };
 }
 
 export const useAnalytics = () => {
@@ -50,16 +62,17 @@ export const useAnalytics = () => {
       console.log('Fetching analytics data...');
 
       const responses = await Promise.all([
-        API.getAnalytics.roleDistribution(),
-        API.getAnalytics.experienceDistribution(),
-        API.getAnalytics.skillsDistribution(),
-        API.getAnalytics.workPreferences(),
-        API.getAnalytics.dislikedAreas(),
+        API.analytics.roleDistribution(),
+        API.analytics.experienceDistribution(),
+        API.analytics.skillsDistribution(),
+        API.analytics.workPreferences(),
+        API.analytics.dislikedAreas(),
+        API.analytics.departmentDistribution(),
       ]);
 
       // Log individual responses
       responses.forEach((res, index) => {
-        const endpoints = ['role', 'experience', 'skills', 'preferences', 'areas'];
+        const endpoints = ['role', 'experience', 'skills', 'preferences', 'areas', 'department'];
         console.log(`${endpoints[index]} response:`, res);
       });
 
@@ -77,6 +90,11 @@ export const useAnalytics = () => {
         skillsDistribution: responses[2].data || [],
         workPreferences: responses[3].data || [],
         dislikedAreas: responses[4].data || [],
+        departmentDistribution: responses[5].data || {
+          totalUsers: 0,
+          roleDistribution: [],
+          departments: [],
+        },
       });
 
       console.log('Analytics data fetched successfully:', {
@@ -85,6 +103,7 @@ export const useAnalytics = () => {
         skillsDistribution: responses[2].data,
         workPreferences: responses[3].data,
         dislikedAreas: responses[4].data,
+        departmentDistribution: responses[5].data,
       });
 
     } catch (err) {
@@ -110,6 +129,11 @@ export const useAnalytics = () => {
         skillsDistribution: [],
         workPreferences: [],
         dislikedAreas: [],
+        departmentDistribution: {
+          totalUsers: 0,
+          roleDistribution: [],
+          departments: [],
+        },
       });
     } finally {
       setLoading(false);

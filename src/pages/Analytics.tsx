@@ -1,7 +1,6 @@
 import { MovingBorder } from "@/components/ui/moving-border";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { StatsCard } from "@/components/ui/stats-card";
-import { HoverEffect } from "@/components/ui/card";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { Spinner } from "@/components/ui/spinner";
 import { Navigation } from "@/components/layout/Navigation";
@@ -17,6 +16,7 @@ import {
   IconChartDots,
   IconDeviceAnalytics,
   IconAlertTriangle,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import {
   Chart as ChartJS,
@@ -32,7 +32,10 @@ import {
   Filler,
 } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { cn } from "@/utils/cn";
+import { RoleUsersModal } from "@/components/modals/RoleUsersModal";
+import { api } from "@/utils/api";
 
 ChartJS.register(
   ArcElement,
@@ -57,6 +60,45 @@ const EmptyState = ({ message = "Data tidak tersedia" }: { message?: string }) =
 const Analytics = () => {
   const headerRef = useRef<HTMLDivElement>(null);
   const { data, loading, error } = useAnalytics();
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [roleUsers, setRoleUsers] = useState<any[] | null>(null);
+  const [roleUsersLoading, setRoleUsersLoading] = useState(false);
+  const [isRoleUsersModalOpen, setIsRoleUsersModalOpen] = useState(false);
+
+  // Fetch users for a specific role
+  const handleViewRoleUsers = async (role: string) => {
+    try {
+      setSelectedRole(role);
+      setIsRoleUsersModalOpen(true);
+      setRoleUsersLoading(true);
+      
+      const response = await api.analytics.getUsersByRole(role);
+      if (response?.data) {
+        setRoleUsers(response.data);
+      } else {
+        console.error('Invalid response format for users by role');
+        toast.error('Failed to load team members');
+      }
+    } catch (error) {
+      console.error('Error fetching users by role:', error);
+      toast.error('Failed to load team members');
+    } finally {
+      setRoleUsersLoading(false);
+    }
+  };
+
+  // Render role users modal
+  const renderRoleUsersModal = () => {
+    return (
+      <RoleUsersModal
+        isOpen={isRoleUsersModalOpen}
+        onClose={() => setIsRoleUsersModalOpen(false)}
+        role={selectedRole}
+        users={roleUsers}
+        loading={roleUsersLoading}
+      />
+    );
+  };
 
   useEffect(() => {
     if (error) {
@@ -141,6 +183,92 @@ const Analytics = () => {
               description="Distinct work preferences"
               icon={<IconChartBar className="w-6 h-6" />}
             />
+          </div>
+
+          {/* Department Overview Section */}
+          <div className="mb-12">
+            <MovingBorder duration={3000} className="self-start p-[1px] mb-6">
+              <BackgroundGradient className="rounded-lg p-4 bg-black">
+                <h2 className="text-2xl font-bold text-neutral-200">
+                  Department Overview
+                </h2>
+              </BackgroundGradient>
+            </MovingBorder>
+
+            {/* Total Workers Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <BackgroundGradient className="rounded-[22px] p-1 bg-black">
+                <div className="bg-neutral-950 rounded-[20px] p-6 h-full">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
+                      <IconUsers className="w-6 h-6" />
+                    </div>
+                    <div className="flex-grow">
+                      <h3 className="text-lg font-semibold text-neutral-200">Total Workers</h3>
+                      <p className="text-3xl font-bold text-neutral-100 mt-2">
+                        {data?.departmentDistribution?.totalUsers || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </BackgroundGradient>
+            </div>
+
+            {/* Role Distribution */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {data?.departmentDistribution?.roleDistribution?.map((role) => (
+                role?._id ? (
+                  <BackgroundGradient key={role._id} className="rounded-[22px] p-1 bg-black">
+                    <div className="bg-neutral-950 rounded-[20px] p-6 h-full">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                          {role._id.toString().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-grow">
+                          <h3 className="text-lg font-semibold text-neutral-200">{role._id}</h3>
+                          <p className="text-sm text-neutral-400 mt-1">{role.count} workers</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-neutral-400">Percentage</span>
+                          <span className="text-sm text-neutral-200">
+                            {Math.round((role.count / (data?.departmentDistribution?.totalUsers || 1)) * 100)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-neutral-800 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full"
+                            style={{
+                              width: `${Math.round((role.count / (data?.departmentDistribution?.totalUsers || 1)) * 100)}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-neutral-800 mt-4">
+                        <button
+                          onClick={() => handleViewRoleUsers(role._id)}
+                          className="flex items-center gap-2 text-neutral-400 hover:text-neutral-200 transition-colors"
+                        >
+                          <IconUsers className="w-4 h-4" />
+                          <span className="text-sm">
+                            {role.count} {role.count === 1 ? 'member' : 'members'}
+                          </span>
+                        </button>
+                        <button 
+                          className="text-neutral-400 hover:text-neutral-200 transition-colors"
+                          onClick={() => handleViewRoleUsers(role._id)}
+                        >
+                          <IconChevronRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </BackgroundGradient>
+                ) : null
+              ))}
+            </div>
           </div>
 
           {/* Charts Grid */}
@@ -249,6 +377,7 @@ const Analytics = () => {
           </div>
         </div>
       </div>
+      {renderRoleUsersModal()}
     </div>
   );
 };
