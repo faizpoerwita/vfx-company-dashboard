@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
-    "build": "./node_modules/.bin/vite build",
+    "build": "node scripts/build.js && ./node_modules/.bin/vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "./node_modules/.bin/vite preview"
