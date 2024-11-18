@@ -1,6 +1,6 @@
 import { User } from '@/components/ui/types'
 
-export type ApiResponse<T> = {
+export type ApiResponse<T = unknown> = {
   success: boolean
   data?: T
   error?: {
@@ -68,22 +68,17 @@ export type Analytics = {
   completedProjects: number
   totalBudget: number
   teamSize: number
-  tasksByStatus: {
-    todo: number
-    inProgress: number
-    review: number
-    completed: number
-  }
-  projectProgress: {
+  tasksByStatus: Record<'todo' | 'inProgress' | 'review' | 'completed', number>
+  projectProgress: Array<{
     projectId: string
     projectName: string
     progress: number
-  }[]
-  recentActivity: {
+  }>
+  recentActivity: Array<{
     id: string
     type: 'PROJECT_CREATED' | 'TASK_COMPLETED' | 'MEMBER_JOINED' | 'PROJECT_COMPLETED'
     description: string
     timestamp: string
     user: User
-  }[]
+  }>
 }

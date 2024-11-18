@@ -1,6 +1,6 @@
-import { ReactNode } from 'react'
+import { HTMLAttributes, ReactNode } from 'react'
 
-export interface ButtonProps {
+export interface ButtonProps extends HTMLAttributes<HTMLButtonElement> {
   children: ReactNode
   type?: 'button' | 'submit' | 'reset'
   disabled?: boolean
@@ -8,12 +8,12 @@ export interface ButtonProps {
   onClick?: () => void
 }
 
-export interface CardProps {
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
   className?: string
 }
 
-export interface SparklesProps {
+export interface SparklesProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode
   className?: string
   id?: string
