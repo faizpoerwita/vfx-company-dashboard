@@ -103,4 +103,4 @@ class ApiClient {
 }
 
 const api = new ApiClient()
-export default api
+export { api }
