@@ -1,19 +1,23 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { forwardRef } from 'react'
+import { CardProps } from './types'
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   children: React.ReactNode;
 }
 
-export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, children, ...props }, ref) => {
+const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ children, className = '', ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
           "rounded-2xl h-full w-full overflow-hidden bg-black border border-neutral-800 dark:border-white/[0.2] group-hover:border-neutral-600 relative z-20",
+          "rounded-lg border bg-card text-card-foreground shadow-sm",
+          'p-6',
           className
         )}
         {...props}
@@ -31,11 +35,6 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
 );
 
 Card.displayName = "Card";
-
-interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  className?: string;
-  children: React.ReactNode;
-}
 
 export const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, children, ...props }, ref) => {
