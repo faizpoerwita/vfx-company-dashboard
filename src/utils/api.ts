@@ -2,18 +2,13 @@ import axios, { AxiosError, AxiosResponse } from 'axios';
 import { toast } from 'react-hot-toast';
 import security from './security';
 
-const BASE_URL = import.meta.env.PROD 
-  ? 'https://vfx-company-dashboard.netlify.app/api'
-  : 'http://localhost:5000/api';
+const VITE_API_URL = import.meta.env.VITE_API_URL || '/api';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Debug API calls
-const debugAPI = (method: string, url: string, data?: any) => {
-  console.log(`[API ${method}] ${url}`, data ? { data } : '');
-};
+const cached = new Map<string, { data: any; timestamp: number }>();
 
-// Create axios instance
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: VITE_API_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -22,7 +17,7 @@ const axiosInstance = axios.create({
   }
 });
 
-// Add request interceptor
+// Request interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = security.getToken();
@@ -36,7 +31,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor
+// Response interceptor
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -56,9 +51,35 @@ axiosInstance.interceptors.response.use(
       }
     }
     
+    if (error.response?.status === 401) {
+      security.clearToken();
+      window.location.href = '/signin';
+    }
+    
     return Promise.reject(error);
   }
 );
+
+// Cache helper functions
+const getCachedData = (key: string) => {
+  const cachedItem = cached.get(key);
+  if (!cachedItem) return null;
+
+  const now = Date.now();
+  if (now - cachedItem.timestamp > CACHE_DURATION) {
+    cached.delete(key);
+    return null;
+  }
+
+  return cachedItem.data;
+};
+
+const setCachedData = (key: string, data: any) => {
+  cached.set(key, {
+    data,
+    timestamp: Date.now(),
+  });
+};
 
 const API = {
   // Authentication
@@ -158,7 +179,6 @@ const API = {
 
   async updateProfile(profileData: any) {
     try {
-      debugAPI('PUT', '/auth/profile', profileData);
       const response = await axiosInstance.put('/auth/profile', profileData);
       
       if (!response?.data) {
@@ -218,6 +238,9 @@ const API = {
   // Dashboard Statistics
   async getProjectStats() {
     try {
+      const cachedData = getCachedData('project-stats');
+      if (cachedData) return cachedData;
+
       const response = await axiosInstance.get('/stats/projects');
       
       if (!response?.data) {
@@ -245,6 +268,7 @@ const API = {
         formatted: formattedStats
       });
 
+      setCachedData('project-stats', formattedStats);
       return formattedStats;
     } catch (error) {
       console.error('Error fetching project stats:', error);
@@ -259,15 +283,11 @@ const API = {
   },
 
   async getTaskStats() {
-    const cacheKey = 'task-stats';
-    const cached = cache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return cached.data;
-    }
+    const cachedData = getCachedData('task-stats');
+    if (cachedData) return cachedData;
 
     const data = await axiosInstance.get('/stats/tasks');
-    cache.set(cacheKey, { data, timestamp: Date.now() });
+    setCachedData('task-stats', data);
     return data;
   },
 
@@ -379,11 +399,11 @@ const API = {
 
   // Cache management
   clearCache() {
-    cache.clear();
+    cached.clear();
   },
 
   invalidateCache(key: string) {
-    cache.delete(key);
+    cached.delete(key);
   },
 };
 

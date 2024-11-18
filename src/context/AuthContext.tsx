@@ -4,65 +4,65 @@ import API from '../utils/api';
 import security from '../utils/security';
 import { toast } from 'react-hot-toast';
 
-interface User {
+export type User = {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  role: 'ADMIN' | 'MANAGER' | 'ARTIST' | 'CLIENT' | 'GUEST';
   onboardingCompleted?: boolean;
   skills?: string[];
   workPreferences?: string[];
   experience?: string;
   portfolio?: string;
   bio?: string;
-}
+};
 
-interface SigninData {
+export type SigninData = {
   email: string;
   password: string;
-}
+};
 
-interface SignupData {
+export type SignupData = {
   email: string;
   password: string;
+  role: 'ADMIN' | 'MANAGER' | 'ARTIST' | 'CLIENT' | 'GUEST';
   firstName: string;
   lastName: string;
-}
+};
 
-interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-interface UserProfile {
+export type UserProfile = {
   firstName: string;
   lastName: string;
-  email: string;
-  skills?: string[];
-  workPreferences?: string[];
-  experience?: string;
+  experienceLevel: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  skills: Array<{ name: string; level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' }>;
+  workPreferences: Array<{ name: string; value: string }>;
+  bio: string;
   portfolio?: string;
-  bio?: string;
-}
+  dislikedWorkAreas: string[];
+  onboardingCompleted: boolean;
+};
 
-interface AuthContextType {
+export type AuthResponse = {
+  user: User;
+  token: string;
+};
+
+type AuthContextType = {
   user: User | null;
   loading: boolean;
-  isLoading: boolean;
   signin: (data: SigninData) => Promise<AuthResponse>;
   signup: (data: SignupData) => Promise<void>;
   signout: () => Promise<void>;
   updateProfile: (data: UserProfile) => Promise<void>;
   isAuthenticated: boolean;
-}
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signin = async (data: SigninData): Promise<AuthResponse> => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       const response = await API.signIn(data.email, data.password);
       
@@ -104,12 +104,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error(message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const signup = async (data: SignupData): Promise<void> => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       const response = await API.signup(data);
       
@@ -126,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error(message);
       throw error;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -160,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
-        isLoading,
         signin,
         signup,
         signout,
