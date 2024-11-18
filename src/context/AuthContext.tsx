@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../utils/api';
+import { api } from '../utils/api';
 import security from '../utils/security';
 import { toast } from 'react-hot-toast';
 
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        const userData = await API.getProfile();
+        const userData = await api.getProfile();
         setUser(userData);
       } catch (error) {
         console.error('Failed to initialize auth:', error);
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signin = async (data: SigninData): Promise<AuthResponse> => {
     setLoading(true);
     try {
-      const response = await API.signIn(data.email, data.password);
+      const response = await api.signIn(data.email, data.password);
       
       if (!response.token || !response.user) {
         throw new Error('Invalid response format');
@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (data: SignupData): Promise<void> => {
     setLoading(true);
     try {
-      const response = await API.signup(data);
+      const response = await api.signup(data);
       
       if (!response.data?.token || !response.data?.user) {
         throw new Error('Invalid response format');
@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signout = async (): Promise<void> => {
     try {
-      await API.logout();
+      await api.logout();
       security.clearToken();
       setUser(null);
       navigate('/signin');
@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: UserProfile): Promise<void> => {
     try {
-      const updatedUser = await API.updateProfile(data);
+      const updatedUser = await api.updateProfile(data);
       setUser(prev => ({ ...prev, ...updatedUser }));
       toast.success('Profile updated successfully');
     } catch (error) {

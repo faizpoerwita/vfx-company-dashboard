@@ -24,7 +24,7 @@ import { TextGenerateEffect } from "../components/ui/text-generate-effect";
 import { HoverEffect } from "../components/ui/card-hover-effect";
 import { StickyScroll } from "../components/ui/sticky-scroll-reveal";
 import { TracingBeam } from "../components/ui/tracing-beam";
-import API from '../utils/api';
+import { api } from '../utils/api';
 
 interface ProjectStats {
   totalProjects: number;
@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        const response = await API.getProjectStats();
+        const response = await api.getProjectStats();
         setStats(response);
       } catch (error) {
         console.error('Error fetching stats:', error);
