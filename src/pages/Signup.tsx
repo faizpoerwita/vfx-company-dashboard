@@ -5,6 +5,25 @@ import { toast } from 'react-hot-toast';
 import { ROLES } from '@/constants/roles';
 import { cn } from "@/utils/cn";
 import { AnimatedButton } from "@/components/ui/animated-button";
+import { z } from 'zod';
+
+// Validation schema
+const signupSchema = z.object({
+  email: z.string()
+    .min(1, 'Email harus diisi')
+    .email('Format email tidak valid'),
+  password: z.string()
+    .min(6, 'Password minimal 6 karakter'),
+  confirmPassword: z.string()
+    .min(1, 'Konfirmasi password harus diisi'),
+  role: z.enum(Object.values(ROLES) as [string, ...string[]], {
+    required_error: 'Role harus dipilih',
+    invalid_type_error: 'Role tidak valid'
+  })
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Password tidak sama",
+  path: ["confirmPassword"],
+});
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -20,25 +39,32 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Password tidak sama');
-      return;
-    }
-
-    setLoading(true);
-
     try {
+      // Validate form data
+      const validatedData = signupSchema.parse(formData);
+      
+      setLoading(true);
+
       await signup({
-        email: formData.email,
-        password: formData.password,
-        role: formData.role as any, // We'll validate this on the server
+        email: validatedData.email,
+        password: validatedData.password,
+        role: validatedData.role,
       });
+      
       toast.success('Pendaftaran berhasil!');
       navigate('/onboarding');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Signup error:', error);
-      const errorMessage = error.message || 'Gagal mendaftar';
-      toast.error(errorMessage);
+      
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Gagal mendaftar');
+      }
     } finally {
       setLoading(false);
     }

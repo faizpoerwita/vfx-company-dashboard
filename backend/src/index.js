@@ -6,26 +6,41 @@ const authRoutes = require('./routes/auth');
 const statsRoutes = require('./routes/stats');
 const teamRoutes = require('./routes/team');
 const notificationsRoutes = require('./routes/notifications');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 
-// Enable pre-flight requests for all routes
-app.options('*', cors());
-
 // CORS configuration
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+    'X-Requested-With',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials',
+    'Access-Control-Allow-Headers'
+  ],
   exposedHeaders: ['Authorization'],
   credentials: true,
-  maxAge: 86400, // 24 hours
-  optionsSuccessStatus: 200
-}));
+  maxAge: 86400,
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
 
-// Request logging middleware
+app.use(cors(corsOptions));
+
+// Enable pre-flight requests for all routes
+app.options('*', cors(corsOptions));
+
+// Request logging middleware with CORS debugging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('Origin:', req.headers.origin);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
   next();
 });
 
@@ -38,6 +53,7 @@ app.use('/auth', authRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Test route
 app.get('/api/test', (req, res) => {
@@ -49,9 +65,65 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vfx-dashb
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => {
-  console.log('Connected to MongoDB Atlas');
-  console.log('MongoDB Connection URI:', process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vfx-dashboard');
+.then(async () => {
+  console.log('Connected to MongoDB');
+  console.log('Connection URI:', process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vfx-dashboard');
+  
+  // Test the connection and create test data if needed
+  try {
+    const User = require('./models/user');
+    const count = await User.countDocuments();
+    console.log('Number of users in database:', count);
+
+    // Create test data if no users exist
+    if (count === 0) {
+      console.log('Creating test data...');
+      
+      const testUsers = [
+        {
+          email: 'ilmuwankecil@gmail.com',
+          password: 'password123',
+          role: '3D Artist',
+          experienceLevel: 'Senior',
+          firstName: 'Test',
+          lastName: 'User',
+          skills: [
+            { name: 'Maya', level: 'Expert' },
+            { name: 'Blender', level: 'Intermediate' }
+          ],
+          workPreferences: [
+            { name: 'Remote Work', value: 'true' },
+            { name: 'Flexible Hours', value: 'true' }
+          ],
+          dislikedWorkAreas: ['Rigging', 'Documentation'],
+          onboardingCompleted: true
+        },
+        {
+          email: 'artist@vfx.com',
+          password: 'password123',
+          role: 'VFX Artist',
+          experienceLevel: 'Mid',
+          firstName: 'VFX',
+          lastName: 'Artist',
+          skills: [
+            { name: 'Houdini', level: 'Expert' },
+            { name: 'Nuke', level: 'Advanced' }
+          ],
+          workPreferences: [
+            { name: 'Remote Work', value: 'false' },
+            { name: 'Flexible Hours', value: 'true' }
+          ],
+          dislikedWorkAreas: ['Management', 'Client Communication'],
+          onboardingCompleted: true
+        }
+      ];
+
+      await User.insertMany(testUsers);
+      console.log('Test data created successfully');
+    }
+  } catch (error) {
+    console.error('Database initialization error:', error);
+  }
 })
 .catch((error) => {
   console.error('MongoDB connection error:', error);
@@ -85,6 +157,16 @@ app.use((err, req, res, next) => {
 // Handle 404 errors
 app.use((req, res) => {
   res.status(404).json({ message: 'Route tidak ditemukan' });
+});
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 const PORT = process.env.PORT || 5000;

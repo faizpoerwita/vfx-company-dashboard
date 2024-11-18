@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.0.17] - 2024-01-19
+
+### Changed
+- Analytics Page UI Enhancement
+  - Removed hover/spotlight effects for cleaner interface
+  - Removed `TracingBeam` component wrapper
+  - Removed `BackgroundBeams` component
+  - Maintained core analytics functionality and data visualization
+
+### Technical Details
+- Analytics Page Component (/src/pages/Analytics.tsx)
+  - Removed imports for `TracingBeam` and `BackgroundBeams`
+  - Simplified component structure while preserving layout
+  - Maintained all chart and statistics functionality
+  - Preserved responsive grid layout and styling
+
+### UI/UX
+- Improved focus on data visualization
+- Reduced visual distractions
+- Enhanced readability of analytics information
+- Maintained consistent design language
+
 ## [1.0.16] - 2024-01-19
 
 ### Changed

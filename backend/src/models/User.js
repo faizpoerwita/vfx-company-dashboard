@@ -5,16 +5,6 @@ const ROLES = ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Produce
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 const userSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    trim: true,
-    required: false
-  },
-  lastName: {
-    type: String,
-    trim: true,
-    required: false
-  },
   email: {
     type: String,
     required: [true, 'Email harus diisi'],
@@ -34,6 +24,18 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password minimal 6 karakter'],
     select: false
   },
+  firstName: {
+    type: String,
+    trim: true,
+    required: false,
+    maxlength: [50, 'Nama depan tidak boleh lebih dari 50 karakter']
+  },
+  lastName: {
+    type: String,
+    trim: true,
+    required: false,
+    maxlength: [50, 'Nama belakang tidak boleh lebih dari 50 karakter']
+  },
   role: {
     type: String,
     required: [true, 'Role harus diisi'],
@@ -42,16 +44,13 @@ const userSchema = new mongoose.Schema({
       message: '{VALUE} bukan role yang valid. Role yang tersedia: ' + ROLES.join(', ')
     }
   },
-  phone: {
+  experienceLevel: {
     type: String,
-    trim: true,
-    required: false
-  },
-  bio: {
-    type: String,
-    trim: true,
-    required: false,
-    maxlength: [500, 'Bio tidak boleh lebih dari 500 karakter']
+    enum: {
+      values: SKILL_LEVELS,
+      message: '{VALUE} bukan level yang valid. Level yang tersedia: ' + SKILL_LEVELS.join(', ')
+    },
+    required: false // Optional during signup, required during onboarding
   },
   skills: [{
     name: {
@@ -77,43 +76,67 @@ const userSchema = new mongoose.Schema({
     value: {
       type: String,
       required: [true, 'Nilai preferensi harus diisi'],
-      trim: true
+      enum: {
+        values: ['true', 'false'],
+        message: 'Nilai preferensi harus true atau false'
+      },
+      default: 'true'
     }
   }],
-  learningInterests: {
+  dislikedWorkAreas: [{
     type: String,
-    trim: true,
-    required: false,
-    maxlength: [300, 'Learning interests tidak boleh lebih dari 300 karakter']
-  },
+    trim: true
+  }],
   portfolio: {
     type: String,
     trim: true,
     required: false,
     validate: {
       validator: function(v) {
-        return !v || /^https?:\/\/.+/.test(v);
+        if (!v || v.trim() === '') return true; // Empty string or undefined is valid
+        try {
+          new URL(v);
+          return true;
+        } catch (e) {
+          return false;
+        }
       },
-      message: 'Portfolio URL harus valid'
+      message: 'Portfolio URL harus valid atau kosong'
+    },
+    set: function(v) {
+      if (!v) return ''; // Convert null/undefined to empty string
+      return v.trim();
     }
+  },
+  bio: {
+    type: String,
+    trim: true,
+    required: false,
+    maxlength: [500, 'Bio tidak boleh lebih dari 500 karakter']
   },
   onboardingCompleted: {
     type: Boolean,
     default: false
-  },
-  lastLogin: {
-    type: Date,
-    default: null
   }
 }, {
   timestamps: true,
   toJSON: {
     virtuals: true,
     transform: function(doc, ret) {
+      delete ret.password;
+      delete ret.__v;
       ret.id = ret._id;
       delete ret._id;
-      delete ret.__v;
-      delete ret.password;
+      
+      // Ensure consistent data format
+      ret.skills = ret.skills || [];
+      ret.workPreferences = ret.workPreferences || [];
+      ret.dislikedWorkAreas = ret.dislikedWorkAreas || [];
+      ret.firstName = ret.firstName || '';
+      ret.lastName = ret.lastName || '';
+      ret.portfolio = ret.portfolio || '';
+      ret.bio = ret.bio || '';
+      
       return ret;
     }
   }
@@ -122,20 +145,16 @@ const userSchema = new mongoose.Schema({
 // Virtual for fullName
 userSchema.virtual('fullName').get(function() {
   if (this.firstName && this.lastName) {
-    return `${this.firstName} ${this.lastName}`.trim();
+    return `${this.firstName} ${this.lastName}`;
   }
-  return this.firstName || this.email.split('@')[0];
+  return this.email.split('@')[0];
 });
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
   try {
-    // Only hash the password if it has been modified (or is new)
-    if (!this.isModified('password')) {
-      return next();
-    }
-
-    // Hash password with cost factor 10
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
@@ -144,29 +163,10 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Pre-save middleware to ensure firstName is set
-userSchema.pre('save', async function(next) {
-  try {
-    // If firstName is not set but fullName is provided
-    if (!this.firstName && this._doc.fullName) {
-      const nameParts = this._doc.fullName.trim().split(/\s+/);
-      this.firstName = nameParts[0];
-      this.lastName = nameParts.slice(1).join(' ');
-    }
-    // Fallback to email prefix if no name is provided
-    else if (!this.firstName && this.email) {
-      this.firstName = this.email.split('@')[0];
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
 // Method to check password validity
-userSchema.methods.isValidPassword = async function(password) {
+userSchema.methods.isValidPassword = async function(candidatePassword) {
   try {
-    return await bcrypt.compare(password, this.password);
+    return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {
     throw new Error('Error validating password');
   }

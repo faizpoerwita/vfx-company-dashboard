@@ -27,18 +27,25 @@ const Signin = () => {
 
     try {
       const validatedData = signinSchema.parse(formData);
-      const result = await signin(validatedData.email, validatedData.password);
+      const result = await signin({
+        email: validatedData.email,
+        password: validatedData.password
+      });
       
       if (result.success) {
-        toast.success('Signin berhasil!');
+        toast.success('Berhasil masuk');
         navigate('/dashboard');
+      } else {
+        toast.error(result.message || 'Gagal masuk');
       }
     } catch (error) {
+      console.error('Signin error:', error);
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
+      } else if (error instanceof Error) {
+        toast.error(error.message);
       } else {
-        console.error('Signin error:', error);
-        toast.error('Gagal masuk. Silakan coba lagi.');
+        toast.error('Terjadi kesalahan saat masuk');
       }
     } finally {
       setLoading(false);

@@ -328,6 +328,46 @@ api.register(userData)         // ❌ Incorrect
 
 ```
 
+## 📊 Analytics Page
+
+### Component Structure
+```typescript
+// src/pages/Analytics.tsx
+const Analytics = () => {
+  // Core analytics data and state management
+  const { data, loading, error } = useAnalytics();
+
+  return (
+    <div className="min-h-screen bg-black">
+      <Navigation />
+      <div className="container mx-auto px-4 py-8">
+        {/* Stats and Charts */}
+      </div>
+    </div>
+  );
+};
+```
+
+### Data Visualization
+- Uses Chart.js for all visualizations
+- Implements four main chart types:
+  * Doughnut chart for role distribution
+  * Bar chart for experience levels
+  * Line chart for skills distribution
+  * Bar chart for work preferences
+- Each chart is wrapped in `BackgroundGradient` for consistent styling
+- Responsive layout with grid system
+- Loading states and error handling included
+
+### Best Practices
+- Clean, distraction-free UI
+- Focus on data readability
+- Consistent color scheme
+- Responsive design
+- Comprehensive error states
+- Loading indicators
+- Empty state handling
+
 ## 🎯 Component Analysis
 
 ### Projects Section

@@ -12,12 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export const Navigation = () => {
-  const { logout } = useAuth();
+  const { signout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signout();
       navigate('/signin');
     } catch (error) {
       console.error('Logout failed:', error);

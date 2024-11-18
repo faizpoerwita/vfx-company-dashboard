@@ -4,91 +4,132 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/user');
 
+// Available roles
+const VALID_ROLES = ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Producer'];
+
 // Helper function to generate tokens
 const generateTokens = (user) => {
-  const accessToken = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
+  try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
 
-  const refreshToken = jwt.sign(
-    { userId: user._id },
-    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+    const accessToken = jwt.sign(
+      { 
+        userId: user._id, 
+        role: user.role,
+        email: user.email 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-  return { accessToken, refreshToken };
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error('Token generation error:', error);
+    throw error;
+  }
 };
 
 // Helper function to set cookies
 const setAuthCookies = (res, { accessToken, refreshToken }) => {
-  // Access token cookie
-  res.cookie('token', accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  });
-
-  // Refresh token cookie
-  if (refreshToken) {
-    res.cookie('refreshToken', refreshToken, {
+  try {
+    // Access token cookie
+    res.cookie('token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
+
+    // Refresh token cookie
+    if (refreshToken) {
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+    }
+  } catch (error) {
+    console.error('Error setting auth cookies:', error);
+    throw error;
   }
 };
 
 // Signin endpoint
 router.post('/signin', async (req, res) => {
   try {
-    console.log('Signin request:', req.body);
     const { email, password } = req.body;
 
-    // Validate input
+    // Input validation
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         message: 'Email dan password harus diisi'
       });
     }
 
-    // Find user
-    const user = await User.findByEmail(email);
-    if (!user || !(await user.isValidPassword(password))) {
+    // Find user and include password
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
       return res.status(401).json({
+        success: false,
         message: 'Email atau password salah'
       });
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    // Validate password
+    const isValidPassword = await user.isValidPassword(password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email atau password salah'
+      });
+    }
 
-    // Generate tokens
-    const tokens = generateTokens(user);
-    setAuthCookies(res, tokens);
+    // Generate token
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    res.json({
-      message: 'Login berhasil',
-      token: tokens.accessToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        onboardingCompleted: user.onboardingCompleted
-      }
+    // Prepare user data
+    const userData = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      experienceLevel: user.experienceLevel || '',
+      skills: user.skills || [],
+      workPreferences: user.workPreferences || [],
+      dislikedWorkAreas: user.dislikedWorkAreas || [],
+      portfolio: user.portfolio || '',
+      bio: user.bio || '',
+      onboardingCompleted: user.onboardingCompleted || false
+    };
+
+    // Send successful response
+    return res.json({
+      success: true,
+      message: 'Berhasil masuk',
+      token,
+      user: userData
     });
+
   } catch (error) {
     console.error('Signin error:', error);
-    res.status(500).json({
-      message: 'Terjadi kesalahan saat login',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    return res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat login'
     });
   }
 });
@@ -96,72 +137,95 @@ router.post('/signin', async (req, res) => {
 // Signup endpoint
 router.post('/signup', async (req, res) => {
   try {
-    console.log('Signup request body:', req.body);
-    const { email, password, role, firstName, lastName } = req.body;
+    const { email, password, role } = req.body;
 
-    // Validate input
+    // Input validation
     if (!email || !password || !role) {
       return res.status(400).json({
-        message: 'Semua field harus diisi',
-        details: {
-          email: !email ? 'Email harus diisi' : null,
-          password: !password ? 'Password harus diisi' : null,
-          role: !role ? 'Role harus diisi' : null
-        }
+        success: false,
+        message: 'Email, password, dan role harus diisi'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format email tidak valid'
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password minimal 6 karakter'
+      });
+    }
+
+    // Validate role
+    if (!VALID_ROLES.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role tidak valid. Role yang tersedia: ' + VALID_ROLES.join(', ')
       });
     }
 
     // Check if user already exists
-    const existingUser = await User.findByEmail(email);
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
+        success: false,
         message: 'Email sudah terdaftar'
       });
     }
 
     // Create new user
-    const user = new User({ 
-      email, 
-      password, 
+    const user = new User({
+      email,
+      password, // Will be hashed by the pre-save middleware
       role,
-      firstName: req.body.firstName,
-      lastName: req.body.lastName
+      onboardingCompleted: false
     });
-    
-    try {
-      await user.validate();
-    } catch (validationError) {
-      console.log('Validation error:', validationError);
-      return res.status(400).json({
-        message: 'Data tidak valid',
-        details: validationError.errors
-      });
-    }
 
+    // Save user
     await user.save();
 
     // Generate tokens
-    const tokens = generateTokens(user);
-    setAuthCookies(res, tokens);
+    const { accessToken, refreshToken } = generateTokens(user);
 
-    res.status(201).json({
+    // Set auth cookies
+    setAuthCookies(res, { accessToken, refreshToken });
+
+    // Return success response
+    return res.status(201).json({
+      success: true,
       message: 'Pendaftaran berhasil',
-      token: tokens.accessToken,
+      token: accessToken,
       user: {
         id: user._id,
         email: user.email,
         role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
         onboardingCompleted: user.onboardingCompleted
       }
     });
+
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({
-      message: 'Terjadi kesalahan saat mendaftar',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    
+    // Handle specific error cases
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join('. ')
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan pada server'
     });
   }
 });
@@ -189,8 +253,8 @@ router.post('/refresh-token', async (req, res) => {
     }
 
     // Generate new tokens
-    const tokens = generateTokens(user);
-    setAuthCookies(res, tokens);
+    const tokens = await generateTokens(user);
+    await setAuthCookies(res, tokens);
 
     res.json({
       message: 'Token refreshed successfully',
@@ -344,7 +408,8 @@ router.put('/profile', async (req, res) => {
     await user.save();
 
     res.json({
-      message: 'Profile updated successfully',
+      success: true,
+      message: 'Profil berhasil diperbarui',
       user: {
         id: user._id,
         email: user.email,
@@ -365,19 +430,22 @@ router.put('/profile', async (req, res) => {
     console.error('Error updating profile:', error);
     if (error.name === 'ValidationError') {
       return res.status(400).json({
-        message: 'Validation Error',
-        details: Object.values(error.errors).map(e => e.message)
+        success: false,
+        message: 'Data profil tidak valid',
+        errors: Object.values(error.errors).map(err => err.message)
       });
     }
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({
+        success: false,
         message: 'Token tidak valid',
         expired: error.name === 'TokenExpiredError'
       });
     }
     res.status(500).json({
-      message: 'Error updating profile',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      success: false,
+      message: 'Gagal memperbarui profil',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

@@ -1,5 +1,5 @@
 import { BackgroundGradient } from "./background-gradient";
-import { cn } from "@/utils/cn";
+import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 interface StatsCardProps {

@@ -5,14 +5,9 @@ import { toast } from 'react-hot-toast';
 import { skillCategories, ROLES } from '@/constants/roles';
 import { cn } from "@/utils/cn";
 import { AnimatedButton } from "@/components/ui/animated-button";
-
-const jobPreferences = [
-  "Bekerja dalam tim",
-  "Bekerja secara mandiri",
-  "Proyek kreatif",
-  "Proyek teknis",
-  "Bekerja secara remote"
-];
+import { WORK_PREFERENCES, transformPreferencesForBackend } from '@/constants/preferences';
+import { z } from 'zod';
+import type { UserProfile, SkillLevel } from '@/types/user';
 
 const dislikedWorkAreas = [
   "Tugas berulang",
@@ -20,6 +15,29 @@ const dislikedWorkAreas = [
   "Pekerjaan administratif",
   "Pekerjaan tanpa variasi"
 ];
+
+const experienceLevels = [
+  { value: 'Beginner', label: 'Junior (0-2 tahun)' },
+  { value: 'Intermediate', label: 'Intermediate (2-5 tahun)' },
+  { value: 'Advanced', label: 'Senior (5+ tahun)' }
+] as const;
+
+// Validation schema
+const onboardingSchema = z.object({
+  firstName: z.string().min(2, 'Nama depan minimal 2 karakter'),
+  lastName: z.string().min(2, 'Nama belakang minimal 2 karakter'),
+  role: z.enum(Object.values(ROLES) as [string, ...string[]], {
+    required_error: 'Role harus dipilih'
+  }),
+  skills: z.array(z.string()).min(1, 'Pilih minimal satu keahlian'),
+  experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'] as const, {
+    required_error: 'Level pengalaman harus dipilih'
+  }),
+  workPreferences: z.array(z.string()).min(1, 'Pilih minimal satu preferensi kerja'),
+  dislikedWorkAreas: z.array(z.string()).min(1, 'Pilih minimal satu area yang tidak disukai'),
+  portfolio: z.string().url('URL portfolio tidak valid').optional().or(z.literal('')),
+  bio: z.string().min(10, 'Bio minimal 10 karakter').max(500, 'Bio maksimal 500 karakter')
+});
 
 const OnboardingForm = () => {
   const navigate = useNavigate();
@@ -33,9 +51,9 @@ const OnboardingForm = () => {
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    experience: '',
-    portfolio: '',
-    bio: '',
+    experienceLevel: user?.experienceLevel || '',
+    portfolio: user?.portfolio || '',
+    bio: user?.bio || '',
   });
 
   useEffect(() => {
@@ -78,43 +96,116 @@ const OnboardingForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
+
       ...prev,
       [name]: value
     }));
   };
 
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent any default button behavior
+    
+    // Step 1: Basic Information
+    if (currentStep === 1) {
+      if (!formData.firstName.trim() || !formData.lastName.trim()) {
+        toast.error('Nama depan dan belakang harus diisi');
+        return;
+      }
+      if (!selectedRole) {
+        toast.error('Silakan pilih peran Anda');
+        return;
+      }
+    }
+    
+    // Step 2: Skills
+    if (currentStep === 2 && selectedSkills.length === 0) {
+      toast.error('Silakan pilih minimal satu keahlian');
+      return;
+    }
+    
+    // Step 3: Experience and Bio
+    if (currentStep === 3) {
+      if (!formData.experienceLevel) {
+        toast.error('Silakan pilih level pengalaman Anda');
+        return;
+      }
+      if (!formData.bio.trim()) {
+        toast.error('Silakan isi bio singkat Anda');
+        return;
+      }
+    }
+    
+    // Step 4: Work Preferences
+    if (currentStep === 4 && selectedPreferences.length === 0) {
+      toast.error('Silakan pilih minimal satu preferensi kerja');
+      return;
+    }
+
+    setCurrentStep(prev => Math.min(prev + 1, 5));
+  };
+
+  const handlePrevious = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent any default button behavior
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
+    
     try {
-      const profileData = {
+      // Validate all data
+      const validatedData = onboardingSchema.parse({
         ...formData,
         role: selectedRole,
         skills: selectedSkills,
-        preferences: selectedPreferences,
-        dislikes: selectedDislikes,
+        workPreferences: selectedPreferences,
+        dislikedWorkAreas: selectedDislikes
+      });
+
+      setLoading(true);
+
+      // Transform work preferences to match backend schema
+      const workPrefs = transformPreferencesForBackend(validatedData.workPreferences);
+
+      // Transform skills to match backend schema
+      const skillsData = validatedData.skills.map(skill => ({
+        name: skill,
+        level: validatedData.experienceLevel as SkillLevel
+      }));
+
+      const profileData: UserProfile = {
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        skills: skillsData,
+        workPreferences: workPrefs,
+        dislikedWorkAreas: validatedData.dislikedWorkAreas,
+        experienceLevel: validatedData.experienceLevel,
+        portfolio: validatedData.portfolio || '',
+        bio: validatedData.bio,
+        onboardingCompleted: true
       };
+
+      // Debug logs
+      console.log('Profile Data to Submit:', profileData);
 
       await updateProfile(profileData);
       toast.success('Profil berhasil diperbarui!');
       navigate('/dashboard');
     } catch (error) {
       console.error('Profile update error:', error);
-      toast.error('Gagal memperbarui profil');
+      
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Gagal memperbarui profil');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleNext = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCurrentStep(prev => prev + 1);
-  };
-
-  const handlePrevious = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCurrentStep(prev => prev - 1);
   };
 
   const renderStep = () => {
@@ -195,7 +286,11 @@ const OnboardingForm = () => {
               {selectedRole && skillCategories[selectedRole as keyof typeof skillCategories]?.map((skill) => (
                 <button
                   key={skill}
-                  onClick={() => handleSkillToggle(skill)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSkillToggle(skill);
+                  }}
                   className={cn(
                     "px-4 py-2 rounded-lg transition-colors",
                     selectedSkills.includes(skill)
@@ -213,40 +308,35 @@ const OnboardingForm = () => {
         return (
           <div className="space-y-6 transition-opacity duration-500 ease-in-out opacity-100">
             <div className="space-y-4">
-              <input
-                type="text"
-                name="experience"
-                value={formData.experience}
+              <select
+                name="experienceLevel"
+                value={formData.experienceLevel}
                 onChange={handleChange}
-                placeholder="Pengalaman (dalam tahun)"
                 className={cn(
                   "relative w-full px-4 py-3 rounded-xl",
-                  "bg-neutral-950/50 border border-neutral-800",
+                  "bg-neutral-950/70 border border-neutral-800",
                   "text-white placeholder-neutral-400",
                   "focus:outline-none focus:ring-[1.5px] focus:ring-neutral-700 focus:border-transparent",
                   "transition-all duration-200 ease-out",
                   "hover:border-neutral-700",
-                  "group-hover:bg-neutral-900/50",
-                  "transform-gpu group-hover:translate-y-[-1px]"
+                  "group-hover:bg-neutral-900/70",
+                  "transform-gpu group-hover:translate-y-[-1px]",
+                  "appearance-none"
                 )}
-              />
-              <input
-                type="text"
-                name="portfolio"
-                value={formData.portfolio}
-                onChange={handleChange}
-                placeholder="Link Portfolio (opsional)"
-                className={cn(
-                  "relative w-full px-4 py-3 rounded-xl",
-                  "bg-neutral-950/50 border border-neutral-800",
-                  "text-white placeholder-neutral-400",
-                  "focus:outline-none focus:ring-[1.5px] focus:ring-neutral-700 focus:border-transparent",
-                  "transition-all duration-200 ease-out",
-                  "hover:border-neutral-700",
-                  "group-hover:bg-neutral-900/50",
-                  "transform-gpu group-hover:translate-y-[-1px]"
-                )}
-              />
+                style={{
+                  backgroundImage: "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"white\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"6 9 12 15 18 9\" /></svg>')",
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 0.75rem center',
+                  backgroundSize: '1.5em',
+                }}
+              >
+                <option value="">Pilih Level Pengalaman</option>
+                {experienceLevels.map((level) => (
+                  <option key={level.value} value={level.value}>
+                    {level.label}
+                  </option>
+                ))}
+              </select>
               <textarea
                 name="bio"
                 value={formData.bio}
@@ -272,10 +362,14 @@ const OnboardingForm = () => {
           <div className="space-y-6 transition-opacity duration-500 ease-in-out opacity-100">
             <h3 className="text-lg font-medium text-neutral-300">Apa yang Anda sukai dalam pekerjaan?</h3>
             <div className="grid grid-cols-2 gap-4">
-              {jobPreferences.map((preference) => (
+              {WORK_PREFERENCES.map((preference) => (
                 <button
                   key={preference}
-                  onClick={() => handlePreferenceToggle(preference)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePreferenceToggle(preference);
+                  }}
                   className={cn(
                     "px-4 py-2 rounded-lg transition-colors",
                     selectedPreferences.includes(preference)
@@ -297,7 +391,11 @@ const OnboardingForm = () => {
               {dislikedWorkAreas.map((dislike) => (
                 <button
                   key={dislike}
-                  onClick={() => handleDislikeToggle(dislike)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDislikeToggle(dislike);
+                  }}
                   className={cn(
                     "px-4 py-2 rounded-lg transition-colors",
                     selectedDislikes.includes(dislike)

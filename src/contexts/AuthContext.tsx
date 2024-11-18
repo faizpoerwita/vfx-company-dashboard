@@ -1,40 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { z } from 'zod';
 import { toast } from 'react-hot-toast';
-import { ROLES, RoleType } from '@/constants/roles';
+import { ROLES } from '@/constants/roles';
 import axios from 'axios';
+import type { User, SignupData, SigninData, AuthResponse, UserProfile } from '@/types/user';
 
-interface User {
-  id: string;
-  email: string;
-  role: RoleType;
-  firstName?: string;
-  lastName?: string;
-  onboardingCompleted: boolean;
-}
-
-interface SignupData {
-  email: string;
-  password: string;
-  role: RoleType;
-}
-
-interface AuthResponse {
-  success: boolean;
-  error?: string;
-}
-
-interface AuthContextType {
+const AuthContext = createContext<{
   user: User | null;
   loading: boolean;
-  signin: (email: string, password: string) => Promise<AuthResponse>;
+  signin: (data: SigninData) => Promise<AuthResponse>;
   signup: (data: SignupData) => Promise<void>;
   signout: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
+  updateProfile: (data: UserProfile) => Promise<void>;
   isAuthenticated: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+} | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -49,134 +28,186 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          // Validate token and get user data
-          const userData = await fetchUserData(token);
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        localStorage.removeItem('token');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initAuth();
+    checkAuth();
   }, []);
 
-  const signin = async (email: string, password: string): Promise<AuthResponse> => {
+  const checkAuth = async () => {
     try {
-      const response = await axios.post('http://localhost:5000/auth/signin', { email, password });
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const user = await fetchUserData(token);
+      setUser(user);
+    } catch (error) {
+      console.error('Auth check error:', error);
+      localStorage.removeItem('token');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signin = async (data: SigninData): Promise<AuthResponse> => {
+    try {
+      const response = await axios.post(
+        'http://localhost:5000/auth/signin',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Gagal masuk');
+      }
+
       const { token, user } = response.data;
-      
+      if (!token || !user) {
+        throw new Error('Data respons tidak valid');
+      }
+
       localStorage.setItem('token', token);
       setUser(user);
-      
-      return { success: true };
+
+      return {
+        success: true,
+        token,
+        user,
+        message: 'Berhasil masuk'
+      };
     } catch (error) {
       console.error('Signin error:', error);
-      return { success: false, error: 'Gagal signin' };
+      let message = 'Gagal masuk';
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          message = 'Email atau password salah';
+        } else if (error.response?.data?.message) {
+          message = error.response.data.message;
+        }
+      }
+
+      return {
+        success: false,
+        message
+      };
     }
   };
 
   const signup = async (data: SignupData): Promise<void> => {
     try {
-      // Validate role
-      if (!Object.values(ROLES).includes(data.role)) {
-        throw new Error('Invalid role');
+      const response = await axios.post(
+        'http://localhost:5000/auth/signup',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Gagal mendaftar');
       }
 
-      const response = await axios.post('http://localhost:5000/auth/signup', data);
       const { token, user } = response.data;
-      
+
+      if (!token || !user) {
+        throw new Error('Data respons tidak valid');
+      }
+
       localStorage.setItem('token', token);
       setUser(user);
     } catch (error) {
       console.error('Signup error:', error);
-      throw error;
+      let message = 'Gagal mendaftar';
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 409) {
+          message = 'Email sudah terdaftar';
+        } else if (error.response?.data?.message) {
+          message = error.response.data.message;
+        }
+      }
+
+      throw new Error(message);
+    }
+  };
+
+  const updateProfile = async (data: UserProfile): Promise<void> => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Token tidak ditemukan');
+      }
+
+      const response = await axios.put(
+        'http://localhost:5000/auth/profile',
+        data,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.data || !response.data.success) {
+        throw new Error(response.data?.message || 'Gagal memperbarui profil');
+      }
+
+      setUser(prevUser => ({
+        ...prevUser!,
+        ...response.data.user
+      }));
+    } catch (error) {
+      console.error('Profile update error:', error);
+      let message = 'Gagal memperbarui profil';
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data?.message) {
+          message = error.response.data.message;
+        }
+      }
+
+      throw new Error(message);
     }
   };
 
   const signout = async (): Promise<void> => {
     try {
-      await axios.post('http://localhost:5000/auth/signout', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        }
-      });
-      localStorage.removeItem('token');
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear local data even if server call fails
-      localStorage.removeItem('token');
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      setUser(null);
-    }
-  };
-
-  const updateProfile = async (data: Partial<User>): Promise<void> => {
-    try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token');
+      if (token) {
+        await axios.post('http://localhost:5000/auth/signout', null, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
       }
-
-      // Update the user's profile
-      const response = await axios.put('http://localhost:5000/auth/profile', {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-        onboardingCompleted: true,
-        skills: data.skills,
-        experience: data.experience,
-        portfolio: data.portfolio,
-        bio: data.bio,
-        preferences: data.preferences,
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      const updatedUser = await response.data;
-      setUser(updatedUser);
-      toast.success('Profile updated successfully!');
-
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      toast.error(error.message || 'Failed to update profile');
-      throw error;
+    } catch (error) {
+      console.error('Signout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
     }
   };
-
-  const value = {
-    user,
-    loading,
-    signin,
-    signup,
-    signout,
-    updateProfile,
-    isAuthenticated: !!user,
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      signin,
+      signup,
+      signout,
+      updateProfile,
+      isAuthenticated: !!user
+    }}>
       {children}
     </AuthContext.Provider>
   );

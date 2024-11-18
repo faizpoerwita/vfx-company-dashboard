@@ -17,7 +17,19 @@ export default defineConfig({
     strictPort: true, // Force the specified port
     host: true, // Listen on all addresses
     open: true,
-    cors: true,
+    cors: {
+      origin: ['http://localhost:5000'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      credentials: true,
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
     historyApiFallback: true, // Enable SPA routing
   },
   base: '/', // Ensure proper base URL for routing

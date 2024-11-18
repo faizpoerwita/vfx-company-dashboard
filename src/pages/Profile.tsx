@@ -20,6 +20,8 @@ import {
   CheckIcon,
 } from '@heroicons/react/24/outline';
 
+import { WORK_PREFERENCES, transformPreferencesForBackend, transformPreferencesForFrontend, dislikedWorkAreas } from '@/constants/preferences';
+
 // Menggunakan kategori skill yang sama dari Onboarding
 const skillCategories: Record<RoleType, string[]> = {
   [ROLES.THREE_D_ARTIST]: [
@@ -45,18 +47,10 @@ const skillCategories: Record<RoleType, string[]> = {
   ],
 };
 
-const workPreferences = [
-  'Bekerja dalam tim',
-  'Bekerja mandiri',
-  'Proyek jangka panjang',
-  'Proyek jangka pendek',
-  'Remote work',
-];
-
 const experienceLevels = [
-  { value: 'junior', label: 'Junior (0-2 tahun)' },
-  { value: 'intermediate', label: 'Intermediate (2-5 tahun)' },
-  { value: 'senior', label: 'Senior (5+ tahun)' }
+  { value: 'Beginner', label: 'Junior (0-2 tahun)' },
+  { value: 'Intermediate', label: 'Intermediate (2-5 tahun)' },
+  { value: 'Advanced', label: 'Senior (5+ tahun)' }
 ];
 
 const profileSchema = z.object({
@@ -64,8 +58,26 @@ const profileSchema = z.object({
   lastName: z.string().min(2, 'Nama belakang minimal 2 karakter'),
   skills: z.array(z.string()).min(1, 'Pilih minimal satu keahlian'),
   workPreferences: z.array(z.string()).min(1, 'Pilih minimal satu preferensi kerja'),
-  experience: z.string().min(1, 'Pilih level pengalaman Anda'),
-  portfolio: z.string().url('URL portfolio tidak valid').optional(),
+  dislikes: z.array(z.string()),
+  experience: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'], {
+    required_error: 'Pilih level pengalaman Anda',
+    invalid_type_error: 'Level pengalaman tidak valid'
+  }),
+  portfolio: z.string()
+    .refine(
+      (val) => {
+        if (!val) return true; // Empty string is valid
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      'URL portfolio tidak valid'
+    )
+    .optional()
+    .transform(val => val || ''), // Transform undefined/null to empty string
   bio: z.string().max(500, 'Bio maksimal 500 karakter'),
 });
 
@@ -74,10 +86,11 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
     skills: [] as string[],
     workPreferences: [] as string[],
+    dislikes: [] as string[],
     experience: '',
     portfolio: '',
     bio: '',
@@ -92,10 +105,9 @@ const Profile = () => {
         skills: Array.isArray(user.skills) ? user.skills.map(skill => 
           typeof skill === 'string' ? skill : skill.name
         ) : [],
-        workPreferences: Array.isArray(user.workPreferences) ? user.workPreferences.map(pref => 
-          typeof pref === 'string' ? pref : pref.name
-        ) : [],
-        experience: user.experience || '',
+        workPreferences: transformPreferencesForFrontend(user.workPreferences || []),
+        dislikes: Array.isArray(user.dislikedWorkAreas) ? user.dislikedWorkAreas : [],
+        experience: user.experienceLevel || '',
         portfolio: user.portfolio || '',
         bio: user.bio || '',
       });
@@ -120,20 +132,20 @@ const Profile = () => {
       const formattedSkills = Array.isArray(data.skills) 
         ? data.skills.map(skill => typeof skill === 'string' ? skill : skill.name)
         : [];
-      console.log('Formatted skills:', formattedSkills);
 
       // Convert work preferences if needed
-      const formattedPreferences = Array.isArray(data.workPreferences)
-        ? data.workPreferences.map(pref => typeof pref === 'string' ? pref : pref.name)
-        : [];
-      console.log('Formatted preferences:', formattedPreferences);
+      const formattedPreferences = transformPreferencesForFrontend(data.workPreferences || []);
+
+      // Ensure dislikes is always an array and use the correct field name
+      const formattedDislikes = Array.isArray(data.dislikedWorkAreas) ? data.dislikedWorkAreas : [];
 
       setFormData({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
         skills: formattedSkills,
         workPreferences: formattedPreferences,
-        experience: data.experience || '',
+        dislikes: formattedDislikes,
+        experience: data.experienceLevel || '',
         portfolio: data.portfolio || '',
         bio: data.bio || '',
       });
@@ -156,12 +168,26 @@ const Profile = () => {
       const validatedData = profileSchema.parse(formData);
       console.log('Submitting profile data:', validatedData);
       
-      await updateProfile({
-        ...validatedData,
-        skills: validatedData.skills.map(skill => ({ name: skill, level: 'Intermediate' })),
-        workPreferences: validatedData.workPreferences.map(pref => ({ name: pref, value: 'true' }))
-      });
+      // Transform data to match backend schema
+      const transformedData = {
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        skills: validatedData.skills.map(skill => ({
+          name: skill,
+          level: validatedData.experience // Use the same experience level for all skills
+        })),
+        workPreferences: transformPreferencesForBackend(validatedData.workPreferences),
+        dislikedWorkAreas: validatedData.dislikes,
+        experienceLevel: validatedData.experience,
+        portfolio: validatedData.portfolio || '',
+        bio: validatedData.bio
+      };
 
+      console.log('Transformed data for backend:', transformedData);
+      
+      setLoading(true);
+      await updateProfile(transformedData);
+      toast.success('Profil berhasil diperbarui');
       setIsEditing(false);
     } catch (error) {
       console.error('Profile update error:', error);
@@ -170,8 +196,10 @@ const Profile = () => {
           toast.error(`${err.path.join('.')}: ${err.message}`);
         });
       } else {
-        toast.error('Gagal memperbarui profil');
+        toast.error(error.message || 'Gagal memperbarui profil');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -192,6 +220,14 @@ const Profile = () => {
       setFormData({ ...formData, workPreferences: formData.workPreferences.filter(p => p !== pref) });
     } else {
       setFormData({ ...formData, workPreferences: [...formData.workPreferences, pref] });
+    }
+  };
+
+  const toggleDislike = (dislike: string) => {
+    if (formData.dislikes.includes(dislike)) {
+      setFormData({ ...formData, dislikes: formData.dislikes.filter(d => d !== dislike) });
+    } else {
+      setFormData({ ...formData, dislikes: [...formData.dislikes, dislike] });
     }
   };
 
@@ -361,7 +397,7 @@ const Profile = () => {
                       </select>
                     ) : (
                       <p className="text-slate-400">
-                        {experienceLevels.find(level => level.value === formData.experience)?.label || 'No experience level selected.'}
+                        {experienceLevels.find(level => level.value === formData.experience)?.label || 'Belum memilih level pengalaman'}
                       </p>
                     )}
                   </div>
@@ -414,7 +450,7 @@ const Profile = () => {
                   <h2 className="mb-4 text-xl font-semibold text-white">Work Preferences</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {isEditing ? (
-                      workPreferences.map((pref) => (
+                      WORK_PREFERENCES.map((pref) => (
                         <button
                           key={pref}
                           type="button"
@@ -437,6 +473,41 @@ const Profile = () => {
                           {pref}
                         </div>
                       ))
+                    )}
+                  </div>
+                </CardBody>
+
+                <CardBody className="relative overflow-hidden rounded-xl border border-slate-800 bg-gray-900 p-8">
+                  <h2 className="mb-4 text-xl font-semibold text-white">Disliked Work Areas</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {isEditing ? (
+                      dislikedWorkAreas.map((dislike) => (
+                        <button
+                          key={dislike}
+                          type="button"
+                          onClick={() => toggleDislike(dislike)}
+                          className={`px-4 py-2 rounded-lg border transition-colors ${
+                            formData.dislikes.includes(dislike)
+                              ? 'bg-rose-500/20 border-rose-500 text-rose-400'
+                              : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                          } hover:bg-neutral-800`}
+                        >
+                          {dislike}
+                        </button>
+                      ))
+                    ) : (
+                      formData.dislikes && formData.dislikes.length > 0 ? (
+                        formData.dislikes.map((dislike) => (
+                          <div
+                            key={dislike}
+                            className="px-4 py-2 rounded-lg border bg-rose-500/20 border-rose-500 text-rose-400"
+                          >
+                            {dislike}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-slate-400 col-span-3">Belum ada area kerja yang tidak disukai</p>
+                      )
                     )}
                   </div>
                 </CardBody>
@@ -489,4 +560,7 @@ const Profile = () => {
 };
 
 export default Profile;
-export default Profile;
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}

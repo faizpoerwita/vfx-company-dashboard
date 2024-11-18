@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 
 interface BackgroundGradientProps extends React.HTMLProps<HTMLDivElement> {

@@ -1,5 +1,6 @@
 import React from "react";
-import { cn } from "@/utils/cn";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -51,3 +52,49 @@ export const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
 );
 
 CardContent.displayName = "CardContent";
+
+export function HoverEffect({
+  items,
+  className,
+}: {
+  items: {
+    title: string;
+    description: string;
+    icon?: React.ReactNode;
+  }[];
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
+        className
+      )}
+    >
+      {items.map((item, idx) => (
+        <motion.div
+          key={idx}
+          className="group relative"
+          whileHover={{ y: -5 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <Card>
+            <CardContent>
+              {item.icon && (
+                <div className="p-3 w-fit rounded-lg bg-neutral-900 mb-4">
+                  {item.icon}
+                </div>
+              )}
+              <h3 className="font-bold text-lg text-neutral-200 mb-2">
+                {item.title}
+              </h3>
+              <p className="text-sm text-neutral-400">
+                {item.description}
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
