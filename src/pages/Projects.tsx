@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import API from '@/utils/api';
+import { api } from '@/utils/api';
 import { toast } from 'react-hot-toast';
 import ErrorBoundary from '@/components/error/ErrorBoundary';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -40,7 +40,7 @@ const Projects: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const response = await API.get<Project[]>('/projects', {
+        const response = await api.get<Project[]>('/projects', {
           headers: {
             'X-User-Role': user?.role || 'guest',
           },
