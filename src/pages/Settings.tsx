@@ -1,6 +1,6 @@
-import { MovingBorder } from "@/components/ui/moving-border";
-import { BackgroundGradient } from "@/components/ui/background-gradient";
-import { HoverEffect } from "@/components/ui/card";
+import { MovingBorder } from "../components/ui/moving-border";
+import { BackgroundGradient } from "../components/ui/background-gradient";
+import { HoverEffect } from "../components/ui/hover-effect";
 import { IconBell, IconLock, IconPalette, IconUser } from "@tabler/icons-react";
 
 const settingsCategories = [
@@ -52,7 +52,7 @@ const Settings = () => {
       <BackgroundGradient className="rounded-2xl bg-black p-6">
         <h2 className="text-xl font-semibold text-neutral-200 mb-4">Quick Preferences</h2>
         <div className="space-y-4">
-          {[
+          {[/* eslint-disable @typescript-eslint/no-unused-vars */
             { name: "Dark Mode", enabled: true },
             { name: "Email Notifications", enabled: true },
             { name: "Desktop Notifications", enabled: false },
