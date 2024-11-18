@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useMemo } from 'react';
-import { Card } from "../ui/Card";
+import { Card, CardContent } from "../ui/Card";
 import { 
   IconUsers,
   IconCalendarStats,
