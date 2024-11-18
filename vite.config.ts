@@ -10,10 +10,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@headlessui/react', '@radix-ui/react-avatar', '@radix-ui/react-dropdown-menu'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
-    strictPort: true, // Force the specified port
-    host: true, // Listen on all addresses
+    strictPort: true,
+    host: true,
     open: true,
     cors: {
       origin: ['http://localhost:5000'],
@@ -28,14 +40,5 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
-    historyApiFallback: true, // Enable SPA routing
-  },
-  base: '/', // Ensure proper base URL for routing
-  build: {
-    sourcemap: true,
-    outDir: 'dist',
-  },
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'framer-motion', 'chart.js', 'react-chartjs-2']
   },
 })
