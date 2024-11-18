@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AxiosError } from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
-import API from '@/utils/api';
+import { api } from '@/utils/api';
 
 interface AnalyticsData {
   roleDistribution: Array<{
@@ -62,12 +62,12 @@ export const useAnalytics = () => {
       console.log('Fetching analytics data...');
 
       const responses = await Promise.all([
-        API.analytics.roleDistribution(),
-        API.analytics.experienceDistribution(),
-        API.analytics.skillsDistribution(),
-        API.analytics.workPreferences(),
-        API.analytics.dislikedAreas(),
-        API.analytics.departmentDistribution(),
+        api.analytics.roleDistribution(),
+        api.analytics.experienceDistribution(),
+        api.analytics.skillsDistribution(),
+        api.analytics.workPreferences(),
+        api.analytics.dislikedAreas(),
+        api.analytics.departmentDistribution(),
       ]);
 
       // Log individual responses
