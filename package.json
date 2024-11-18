@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "node -e \"require('fs').writeFileSync('.env', 'VITE_API_URL=/.netlify/functions\\nNODE_ENV=production')\"",
-    "build": "npm run prebuild && vite build",
+    "build": "./node_modules/.bin/vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
