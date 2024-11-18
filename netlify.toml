@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --legacy-peer-deps && npm run build"
+  command = "chmod +x build.sh && ./build.sh"
   publish = "dist"
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./package-lock.json"
 
@@ -8,6 +8,7 @@
   VITE_API_URL = "/api"
   CI = "false"
   NPM_FLAGS = "--legacy-peer-deps --no-audit --no-fund"
+  PATH = "./node_modules/.bin:$PATH"
 
 [[redirects]]
   from = "/*"
