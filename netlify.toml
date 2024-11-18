@@ -1,8 +1,8 @@
 [build]
   base = "/"
   publish = "dist"
-  command = "npm install && npm run build"
-  environment = { NODE_VERSION = "18" }
+  command = "npm run build"
+  environment = { NODE_VERSION = "18", NPM_FLAGS = "--version" }
 
 [build.environment]
   VITE_API_URL = "/.netlify/functions"
@@ -20,3 +20,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[dev]
+  command = "npm run dev"
+  port = 5173
+  publish = "dist"

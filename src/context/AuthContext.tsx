@@ -18,13 +18,42 @@ interface User {
   bio?: string;
 }
 
+interface SigninData {
+  email: string;
+  password: string;
+}
+
+interface SignupData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+interface UserProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  skills?: string[];
+  workPreferences?: string[];
+  experience?: string;
+  portfolio?: string;
+  bio?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (userData: any) => Promise<{ success: boolean; error?: string }>;
+  isLoading: boolean;
+  signin: (data: SigninData) => Promise<AuthResponse>;
+  signup: (data: SignupData) => Promise<void>;
   signout: () => Promise<void>;
-  updateProfile: (profileData: any) => Promise<void>;
+  updateProfile: (data: UserProfile) => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -33,11 +62,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Check authentication status on mount
   useEffect(() => {
-    const checkAuth = async () => {
+    const initAuth = async () => {
       try {
         if (!security.getToken()) {
           setLoading(false);
@@ -47,19 +76,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = await API.getProfile();
         setUser(userData);
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Failed to initialize auth:', error);
         security.clearToken();
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    initAuth();
   }, []);
 
-  const signin = async (email: string, password: string) => {
+  const signin = async (data: SigninData): Promise<AuthResponse> => {
+    setIsLoading(true);
     try {
-      const response = await API.signIn(email, password);
+      const response = await API.signIn(data.email, data.password);
       
       if (!response.token || !response.user) {
         throw new Error('Invalid response format');
@@ -68,16 +98,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       security.setToken(response.token);
       setUser(response.user);
       
-      return { success: true };
-    } catch (error) {
-      console.error('Sign in failed:', error);
-      return { success: false, error: error.message };
+      return response;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to sign in';
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signup = async (userData: any) => {
+  const signup = async (data: SignupData): Promise<void> => {
+    setIsLoading(true);
     try {
-      const response = await API.signup(userData);
+      const response = await API.signup(data);
       
       if (!response.data?.token || !response.data?.user) {
         throw new Error('Invalid response format');
@@ -86,47 +120,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       security.setToken(response.data.token);
       setUser(response.data.user);
       
-      return { success: true };
-    } catch (error) {
-      console.error('Sign up failed:', error);
-      return { success: false, error: error.message };
+      toast.success('Successfully signed up! Please sign in.');
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to sign up';
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const signout = async () => {
+  const signout = async (): Promise<void> => {
     try {
       await API.logout();
       security.clearToken();
       setUser(null);
       navigate('/signin');
+      toast.success('Successfully signed out');
     } catch (error) {
-      console.error('Sign out failed:', error);
-      throw error;
+      console.error('Failed to sign out:', error);
+      toast.error('Failed to sign out');
     }
   };
 
-  const updateProfile = async (profileData: any) => {
+  const updateProfile = async (data: UserProfile): Promise<void> => {
     try {
-      const updatedUser = await API.updateProfile(profileData);
+      const updatedUser = await API.updateProfile(data);
       setUser(prev => ({ ...prev, ...updatedUser }));
       toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Profile update failed:', error);
+      console.error('Failed to update profile:', error);
+      toast.error('Failed to update profile');
       throw error;
     }
   };
 
-  const value = {
-    user,
-    loading,
-    signin,
-    signup,
-    signout,
-    updateProfile,
-    isAuthenticated: !!user,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isLoading,
+        signin,
+        signup,
+        signout,
+        updateProfile,
+        isAuthenticated: !!user,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

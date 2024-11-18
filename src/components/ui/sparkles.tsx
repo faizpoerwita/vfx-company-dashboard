@@ -1,24 +1,56 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
+import { cn } from "@/utils/cn";
 
 interface SparklesProps {
   id: string;
   background?: string;
   minSize?: number;
   maxSize?: number;
-  particleDensity?: number;
+  speed?: number;
   className?: string;
   particleColor?: string;
+  particleCount?: number;
 }
+
+const random = (min: number, max: number) => Math.floor(Math.random() * (max - min)) + min;
+
+const useRandomInterval = (callback: () => void, minDelay: number, maxDelay: number) => {
+  const timeoutId = React.useRef<number | null>(null);
+  const savedCallback = React.useRef(callback);
+
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  useEffect(() => {
+    const tick = () => {
+      const nextDelay = random(minDelay, maxDelay);
+      timeoutId.current = window.setTimeout(() => {
+        savedCallback.current();
+        tick();
+      }, nextDelay);
+    };
+
+    tick();
+
+    return () => {
+      if (timeoutId.current) {
+        window.clearTimeout(timeoutId.current);
+      }
+    };
+  }, [minDelay, maxDelay]);
+};
 
 export const SparklesCore: React.FC<SparklesProps> = ({
   id,
   background = "transparent",
-  minSize = 0.4,
-  maxSize = 1,
-  particleDensity = 100,
+  minSize = 10,
+  maxSize = 20,
+  speed = 1,
   className,
-  particleColor = "#FFF"
+  particleColor = "#FFF",
+  particleCount = 50,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [particles, setParticles] = useState<Array<any>>([]);
@@ -32,7 +64,6 @@ export const SparklesCore: React.FC<SparklesProps> = ({
     if (!ctx) return;
 
     const createParticles = () => {
-      const particleCount = particleDensity;
       const particles = [];
 
       for (let i = 0; i < particleCount; i++) {
@@ -82,14 +113,30 @@ export const SparklesCore: React.FC<SparklesProps> = ({
     animate();
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [background, maxSize, minSize, particleColor, particleDensity]);
+  }, [background, maxSize, minSize, particleColor, particleCount]);
+
+  useRandomInterval(
+    () => {
+      setParticles((particles) =>
+        [...particles.slice(1), {
+          id: Date.now(),
+          size: random(minSize, maxSize),
+          x: random(0, 100),
+          y: random(0, 100),
+        }].slice(-particleCount)
+      );
+    },
+    50 / speed,
+    150 / speed
+  );
 
   return (
     <motion.canvas
       ref={canvasRef}
       animate={controls}
-      className={className}
+      className={cn("absolute inset-0 overflow-hidden pointer-events-none", className)}
       style={{ background }}
+      aria-hidden="true"
     />
   );
 };

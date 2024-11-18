@@ -1,94 +1,97 @@
 # VFX Company Dashboard
 
-A modern dashboard application for managing VFX company operations, projects, and resources.
+A modern dashboard for VFX companies to manage projects, teams, and resources.
 
 ## Features
-- Secure authentication with signin/signup
-- Project tracking and management
-- Resource allocation
-- Task management
-- Performance metrics
-- Timeline visualization
-- Role-based access control
 
-## Setup
-1. Install dependencies:
+- 📊 Real-time analytics and reporting
+- 👥 Team management and collaboration
+- 🎨 Project tracking and resource allocation
+- 🔒 Secure authentication and authorization
+- 📱 Responsive design for all devices
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript + Vite
+- **Styling**: TailwindCSS + Shadcn/ui
+- **State Management**: React Context
+- **Authentication**: JWT
+- **Deployment**: Netlify
+- **CI/CD**: GitHub Actions
+
+## Development Setup
+
+1. Clone the repository:
+```bash
+git clone https://github.com/faizpoerwita/vfx-company-dashboard.git
+cd vfx-company-dashboard
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Set up environment variables:
-```bash
-# Create .env file
-cp .env.example .env
-
-# Fill in required variables:
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
+3. Create a `.env` file in the root directory:
+```env
+VITE_API_URL=your_api_url
 ```
 
-3. Run the development server:
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-## Tech Stack
-- React with TypeScript
-- Express.js backend
-- MongoDB database
-- JWT authentication
-- Tailwind CSS
-- Chart.js for visualizations
-- React Router for navigation
+## Build & Deployment
 
-## Documentation
-For detailed documentation including API endpoints, authentication flows, and naming conventions, see [GUIDE.md](./GUIDE.md).
-
-## 🚀 Deployment
-
-### Prerequisites
-1. [Netlify Account](https://www.netlify.com/)
-2. [MongoDB Atlas Account](https://www.mongodb.com/cloud/atlas)
-3. Git repository (GitHub, GitLab, or Bitbucket)
-
-### Environment Variables
-Create the following environment variables in Netlify:
-```env
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-NODE_ENV=production
-FRONTEND_URL=https://vfx-company-dashboard.netlify.app
+### Local Build
+```bash
+npm run build
+npm run preview
 ```
 
-### Deployment Steps
+### Netlify Deployment
 
-1. **Database Setup**
-   - Create a MongoDB Atlas cluster
-   - Get your connection string
-   - Add IP address 0.0.0.0/0 to network access (or Netlify's IPs)
+The project is configured for automatic deployment to Netlify. Each push to the main branch triggers a new deployment.
 
-2. **Frontend & Backend Deployment**
-   - Connect your Git repository to Netlify
-   - Configure build settings:
-     - Build command: `npm run build`
-     - Publish directory: `dist`
-   - Add environment variables in Netlify settings
-   - Deploy!
+#### Deployment Configuration
 
-3. **Post-Deployment**
-   - Set up custom domain (optional)
-   - Configure SSL certificate
-   - Test all API endpoints
-   - Monitor logs for any issues
+- **Build Command**: `npm run build`
+- **Publish Directory**: `dist`
+- **Node Version**: 18
+- **Base Directory**: `/`
 
-### Continuous Deployment
-The app is set up for continuous deployment:
-1. Push changes to main branch
-2. Netlify automatically builds and deploys
-3. Both frontend and serverless functions are updated
+The deployment configuration is managed through `netlify.toml` and GitHub Actions workflow.
 
-### Monitoring
-- Use Netlify's built-in analytics
-- Monitor MongoDB Atlas metrics
-- Check function execution logs
-- Set up alerts for errors
+#### Environment Variables
+
+Required environment variables in Netlify:
+- `VITE_API_URL`: API endpoint URL
+
+### Troubleshooting Deployment
+
+If you encounter build failures:
+
+1. Verify Node.js version:
+   - The project uses Node.js 18
+   - Check `netlify.toml` for correct Node version specification
+
+2. Check build logs:
+   - Review Netlify deployment logs for specific errors
+   - Ensure all dependencies are properly installed
+
+3. Environment variables:
+   - Verify all required environment variables are set in Netlify
+   - Check variable names match those in the code
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -22,6 +22,28 @@ import {
 
 import { WORK_PREFERENCES, transformPreferencesForBackend, transformPreferencesForFrontend, dislikedWorkAreas } from '@/constants/preferences';
 
+interface Skill {
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+}
+
+interface WorkPreference {
+  name: string;
+  value: string;
+}
+
+interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  skills: Skill[];
+  workPreferences: WorkPreference[];
+  experienceLevel: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  portfolio: string;
+  bio: string;
+  onboardingCompleted: boolean;
+}
+
 // Menggunakan kategori skill yang sama dari Onboarding
 const skillCategories: Record<RoleType, string[]> = {
   [ROLES.THREE_D_ARTIST]: [
@@ -56,28 +78,16 @@ const experienceLevels = [
 const profileSchema = z.object({
   firstName: z.string().min(2, 'Nama depan minimal 2 karakter'),
   lastName: z.string().min(2, 'Nama belakang minimal 2 karakter'),
-  skills: z.array(z.string()).min(1, 'Pilih minimal satu keahlian'),
-  workPreferences: z.array(z.string()).min(1, 'Pilih minimal satu preferensi kerja'),
-  dislikes: z.array(z.string()),
-  experience: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'], {
-    required_error: 'Pilih level pengalaman Anda',
-    invalid_type_error: 'Level pengalaman tidak valid'
-  }),
-  portfolio: z.string()
-    .refine(
-      (val) => {
-        if (!val) return true; // Empty string is valid
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      'URL portfolio tidak valid'
-    )
-    .optional()
-    .transform(val => val || ''), // Transform undefined/null to empty string
+  skills: z.array(z.object({
+    name: z.string(),
+    level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'])
+  })),
+  workPreferences: z.array(z.object({
+    name: z.string(),
+    value: z.string()
+  })),
+  experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert']),
+  portfolio: z.string().url().optional(),
   bio: z.string().max(500, 'Bio maksimal 500 karakter'),
 });
 
@@ -85,15 +95,16 @@ const Profile = () => {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProfileFormData>({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    skills: [] as string[],
-    workPreferences: [] as string[],
-    dislikes: [] as string[],
-    experience: '',
-    portfolio: '',
-    bio: '',
+    email: user?.email || '',
+    skills: user?.skills || [],
+    workPreferences: transformPreferencesForFrontend(user.workPreferences || []),
+    experienceLevel: user?.experienceLevel || 'Beginner',
+    portfolio: user?.portfolio || '',
+    bio: user?.bio || '',
+    onboardingCompleted: user?.onboardingCompleted || false
   });
 
   // Update form data when user data changes
@@ -102,14 +113,15 @@ const Profile = () => {
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
+        email: user.email || '',
         skills: Array.isArray(user.skills) ? user.skills.map(skill => 
-          typeof skill === 'string' ? skill : skill.name
+          typeof skill === 'string' ? { name: skill, level: 'Beginner' } : skill
         ) : [],
         workPreferences: transformPreferencesForFrontend(user.workPreferences || []),
-        dislikes: Array.isArray(user.dislikedWorkAreas) ? user.dislikedWorkAreas : [],
-        experience: user.experienceLevel || '',
+        experienceLevel: user.experienceLevel || 'Beginner',
         portfolio: user.portfolio || '',
         bio: user.bio || '',
+        onboardingCompleted: user.onboardingCompleted || false
       });
     }
   }, [user]);
@@ -130,24 +142,22 @@ const Profile = () => {
 
       // Convert skills array if needed
       const formattedSkills = Array.isArray(data.skills) 
-        ? data.skills.map(skill => typeof skill === 'string' ? skill : skill.name)
+        ? data.skills.map(skill => typeof skill === 'string' ? { name: skill, level: 'Beginner' } : skill)
         : [];
 
       // Convert work preferences if needed
       const formattedPreferences = transformPreferencesForFrontend(data.workPreferences || []);
 
-      // Ensure dislikes is always an array and use the correct field name
-      const formattedDislikes = Array.isArray(data.dislikedWorkAreas) ? data.dislikedWorkAreas : [];
-
       setFormData({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
+        email: data.email || '',
         skills: formattedSkills,
         workPreferences: formattedPreferences,
-        dislikes: formattedDislikes,
-        experience: data.experienceLevel || '',
+        experienceLevel: data.experienceLevel || 'Beginner',
         portfolio: data.portfolio || '',
         bio: data.bio || '',
+        onboardingCompleted: data.onboardingCompleted || false
       });
     } catch (error) {
       console.error('Profile fetch error:', {
@@ -172,13 +182,13 @@ const Profile = () => {
       const transformedData = {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
+        email: validatedData.email,
         skills: validatedData.skills.map(skill => ({
-          name: skill,
-          level: validatedData.experience // Use the same experience level for all skills
+          name: skill.name,
+          level: skill.level
         })),
         workPreferences: transformPreferencesForBackend(validatedData.workPreferences),
-        dislikedWorkAreas: validatedData.dislikes,
-        experienceLevel: validatedData.experience,
+        experienceLevel: validatedData.experienceLevel,
         portfolio: validatedData.portfolio || '',
         bio: validatedData.bio
       };
@@ -207,28 +217,32 @@ const Profile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const toggleSkill = (skill: string) => {
-    if (formData.skills.includes(skill)) {
-      setFormData({ ...formData, skills: formData.skills.filter(s => s !== skill) });
-    } else {
-      setFormData({ ...formData, skills: [...formData.skills, skill] });
-    }
+  const handleSkillChange = (index: number, field: keyof Skill, value: string) => {
+    setFormData(prev => {
+      const newSkills = [...prev.skills];
+      newSkills[index] = {
+        ...newSkills[index],
+        [field]: value
+      };
+      return {
+        ...prev,
+        skills: newSkills
+      };
+    });
   };
 
-  const toggleWorkPreference = (pref: string) => {
-    if (formData.workPreferences.includes(pref)) {
-      setFormData({ ...formData, workPreferences: formData.workPreferences.filter(p => p !== pref) });
-    } else {
-      setFormData({ ...formData, workPreferences: [...formData.workPreferences, pref] });
-    }
+  const addSkill = () => {
+    setFormData(prev => ({
+      ...prev,
+      skills: [...prev.skills, { name: '', level: 'Beginner' }]
+    }));
   };
 
-  const toggleDislike = (dislike: string) => {
-    if (formData.dislikes.includes(dislike)) {
-      setFormData({ ...formData, dislikes: formData.dislikes.filter(d => d !== dislike) });
-    } else {
-      setFormData({ ...formData, dislikes: [...formData.dislikes, dislike] });
-    }
+  const removeSkill = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index)
+    }));
   };
 
   if (loading) {
@@ -383,8 +397,8 @@ const Profile = () => {
                     </label>
                     {isEditing ? (
                       <select
-                        name="experience"
-                        value={formData.experience}
+                        name="experienceLevel"
+                        value={formData.experienceLevel}
                         onChange={handleInputChange}
                         className="w-full rounded-lg border border-slate-800 bg-gray-900/50 p-3 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
                       >
@@ -397,7 +411,7 @@ const Profile = () => {
                       </select>
                     ) : (
                       <p className="text-slate-400">
-                        {experienceLevels.find(level => level.value === formData.experience)?.label || 'Belum memilih level pengalaman'}
+                        {experienceLevels.find(level => level.value === formData.experienceLevel)?.label || 'Belum memilih level pengalaman'}
                       </p>
                     )}
                   </div>
@@ -418,9 +432,18 @@ const Profile = () => {
                               <button
                                 key={skill}
                                 type="button"
-                                onClick={() => toggleSkill(skill)}
+                                onClick={() => {
+                                  const newSkills = [...formData.skills];
+                                  const existingSkill = newSkills.find(s => s.name === skill);
+                                  if (existingSkill) {
+                                    newSkills.splice(newSkills.indexOf(existingSkill), 1);
+                                  } else {
+                                    newSkills.push({ name: skill, level: 'Beginner' });
+                                  }
+                                  setFormData({ ...formData, skills: newSkills });
+                                }}
                                 className={`px-4 py-2 rounded-lg border transition-colors ${
-                                  formData.skills.includes(skill)
+                                  formData.skills.find(s => s.name === skill)
                                     ? 'bg-blue-500/20 border-blue-500 text-blue-400'
                                     : 'bg-neutral-900 border-neutral-800 text-neutral-400'
                                 } hover:bg-neutral-800`}
@@ -435,10 +458,10 @@ const Profile = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {formData.skills.map((skill) => (
                           <div
-                            key={skill}
+                            key={skill.name}
                             className="px-4 py-2 rounded-lg border bg-blue-500/20 border-blue-500 text-blue-400"
                           >
-                            {skill}
+                            {skill.name} ({skill.level})
                           </div>
                         ))}
                       </div>
@@ -454,9 +477,18 @@ const Profile = () => {
                         <button
                           key={pref}
                           type="button"
-                          onClick={() => toggleWorkPreference(pref)}
+                          onClick={() => {
+                            const newPreferences = [...formData.workPreferences];
+                            const existingPreference = newPreferences.find(p => p.name === pref);
+                            if (existingPreference) {
+                              newPreferences.splice(newPreferences.indexOf(existingPreference), 1);
+                            } else {
+                              newPreferences.push({ name: pref, value: pref });
+                            }
+                            setFormData({ ...formData, workPreferences: newPreferences });
+                          }}
                           className={`px-4 py-2 rounded-lg border transition-colors ${
-                            formData.workPreferences.includes(pref)
+                            formData.workPreferences.find(p => p.name === pref)
                               ? 'bg-blue-500/20 border-blue-500 text-blue-400'
                               : 'bg-neutral-900 border-neutral-800 text-neutral-400'
                           } hover:bg-neutral-800`}
@@ -467,10 +499,10 @@ const Profile = () => {
                     ) : (
                       formData.workPreferences.map((pref) => (
                         <div
-                          key={pref}
+                          key={pref.name}
                           className="px-4 py-2 rounded-lg border bg-blue-500/20 border-blue-500 text-blue-400"
                         >
-                          {pref}
+                          {pref.name}
                         </div>
                       ))
                     )}
@@ -485,7 +517,16 @@ const Profile = () => {
                         <button
                           key={dislike}
                           type="button"
-                          onClick={() => toggleDislike(dislike)}
+                          onClick={() => {
+                            const newDislikes = [...formData.dislikes];
+                            const existingDislike = newDislikes.find(d => d === dislike);
+                            if (existingDislike) {
+                              newDislikes.splice(newDislikes.indexOf(existingDislike), 1);
+                            } else {
+                              newDislikes.push(dislike);
+                            }
+                            setFormData({ ...formData, dislikes: newDislikes });
+                          }}
                           className={`px-4 py-2 rounded-lg border transition-colors ${
                             formData.dislikes.includes(dislike)
                               ? 'bg-rose-500/20 border-rose-500 text-rose-400'
@@ -527,7 +568,7 @@ const Profile = () => {
                       name="phone"
                       value={formData.phone || ''}
                       onChange={handleInputChange}
-                      className="w-full rounded-lg border border-slate-800 bg-gray-900/50 p-3 text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                      className="w-full p-2 rounded bg-zinc-800 border border-zinc-700"
                     />
                   ) : (
                     <p className="text-slate-400">{formData.phone || 'No phone number added'}</p>
