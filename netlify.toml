@@ -1,11 +1,12 @@
 [build]
-  command = "chmod +x build.sh && ./build.sh"
+  command = "cp .env.production .env && npm install --legacy-peer-deps && npm run build"
   publish = "dist"
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./package-lock.json"
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_API_URL = "/api"
+  VITE_API_URL = "/.netlify/functions"
+  NODE_ENV = "production"
   CI = "false"
   NPM_FLAGS = "--legacy-peer-deps --no-audit --no-fund"
   PATH = "./node_modules/.bin:$PATH"
