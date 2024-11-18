@@ -5,7 +5,7 @@ import security from '@/utils/security';
 import { toast } from 'react-hot-toast';
 import { z } from 'zod';
 import { ROLES, RoleType } from '@/constants/roles';
-import API from '@/utils/api';
+import { api } from '@/utils/api';
 import { Navigation } from '@/components/layout/Navigation';
 import { BackgroundBeams } from '@/components/ui/aceternity/background-beams';
 import { HoverEffect } from '@/components/ui/aceternity/hover-effect';
