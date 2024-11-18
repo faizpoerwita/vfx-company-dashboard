@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
   ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ./package-lock.json"
 
@@ -7,7 +7,7 @@
   NODE_VERSION = "18"
   VITE_API_URL = "/api"
   CI = "false"
-  NPM_FLAGS = "--no-audit --no-fund"
+  NPM_FLAGS = "--legacy-peer-deps --no-audit --no-fund"
 
 [[redirects]]
   from = "/*"

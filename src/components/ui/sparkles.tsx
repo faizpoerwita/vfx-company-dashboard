@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { SparklesProps } from './types'
 import { cn } from '@/utils/cn'
 
 interface SparklesProps {
-  id: string;
+  children?: React.ReactNode;
+  id?: string;
   background?: string;
   minSize?: number;
   maxSize?: number;
@@ -19,20 +19,18 @@ const generateSparkle = (minSize: number, maxSize: number, color: string) => {
     id: Math.random(),
     size,
     color,
+    createdAt: Date.now(),
     style: {
       top: Math.random() * 100 + '%',
       left: Math.random() * 100 + '%',
       zIndex: 2,
-      width: size,
-      height: size,
-      transform: `rotate(${Math.random() * 360}deg)`,
     },
   }
 }
 
 const DEFAULT_COLOR = '#FFC700'
 
-const Sparkles = ({
+export const SparklesCore: React.FC<SparklesProps> = ({
   children,
   className = '',
   id = 'sparkles',
@@ -41,28 +39,34 @@ const Sparkles = ({
   maxSize = 20,
   speed = 1,
   particleColor = DEFAULT_COLOR,
-}: SparklesProps) => {
-  const [sparkles, setSparkles] = useState<Array<ReturnType<typeof generateSparkle>>>([])
+}) => {
+  const [sparkles, setSparkles] = useState<ReturnType<typeof generateSparkle>[]>([])
 
   useEffect(() => {
-    const newSparkle = () => {
+    const sparkleInterval = setInterval(() => {
+      const now = Date.now()
       const sparkle = generateSparkle(minSize, maxSize, particleColor)
-      setSparkles(s => [...s, sparkle])
-      setTimeout(() => {
-        setSparkles(s => s.filter(sp => sp.id !== sparkle.id))
-      }, 1000 * speed)
-    }
+      
+      setSparkles(currentSparkles => {
+        const newSparkles = currentSparkles.filter(s => {
+          const age = now - s.createdAt
+          return age < 750 * speed
+        })
+        
+        if (newSparkles.length < 3) {
+          return [...newSparkles, sparkle]
+        }
+        
+        return newSparkles
+      })
+    }, 50 / speed)
 
-    const interval = setInterval(newSparkle, 500 * speed)
-    return () => clearInterval(interval)
+    return () => clearInterval(sparkleInterval)
   }, [minSize, maxSize, speed, particleColor])
 
   return (
-    <div className={cn('relative inline-block', className)} id={id}>
-      <div
-        className="absolute inset-0 -z-10"
-        style={{ background }}
-      />
+    <div className={cn('relative inline-block', className)} style={{ background }}>
+      {children}
       <AnimatePresence>
         {sparkles.map(sparkle => (
           <motion.span
@@ -72,11 +76,14 @@ const Sparkles = ({
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.3 * speed }}
+            transition={{ duration: 0.75 / speed }}
           >
             <svg
-              width="100%"
-              height="100%"
+              className="absolute"
+              style={{
+                width: sparkle.size,
+                height: sparkle.size,
+              }}
               viewBox="0 0 160 160"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -89,9 +96,6 @@ const Sparkles = ({
           </motion.span>
         ))}
       </AnimatePresence>
-      {children}
     </div>
   )
 }
-
-export default Sparkles
