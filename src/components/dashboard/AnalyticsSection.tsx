@@ -2,9 +2,28 @@ import { useEffect, useRef } from 'react';
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { Card } from "@/components/ui/card";
 import { Bar } from 'react-chartjs-2';
-import type { ChartJS } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartData,
+  ChartOptions
+} from 'chart.js';
 
-const analyticsData = {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const analyticsData: ChartData<'bar'> = {
   labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
   datasets: [
     {
@@ -24,8 +43,41 @@ const analyticsData = {
   ]
 };
 
+const chartOptions: ChartOptions<'bar'> = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      position: 'top',
+      labels: {
+        color: 'rgb(229, 231, 235)',
+        padding: 20,
+        font: { size: 12 }
+      }
+    }
+  },
+  scales: {
+    x: {
+      grid: {
+        color: 'rgba(229, 231, 235, 0.1)'
+      },
+      ticks: {
+        color: 'rgb(229, 231, 235)'
+      }
+    },
+    y: {
+      grid: {
+        color: 'rgba(229, 231, 235, 0.1)'
+      },
+      ticks: {
+        color: 'rgb(229, 231, 235)'
+      }
+    }
+  }
+};
+
 export const AnalyticsSection = () => {
-  const chartRef = useRef<ChartJS>(null);
+  const chartRef = useRef<ChartJS<'bar'>>(null);
 
   useEffect(() => {
     return () => {
@@ -44,38 +96,7 @@ export const AnalyticsSection = () => {
             <Bar
               ref={chartRef}
               data={analyticsData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'top' as const,
-                    labels: {
-                      color: 'rgb(229, 231, 235)',
-                      padding: 20,
-                      font: { size: 12 }
-                    }
-                  }
-                },
-                scales: {
-                  x: {
-                    grid: {
-                      color: 'rgba(229, 231, 235, 0.1)'
-                    },
-                    ticks: {
-                      color: 'rgb(229, 231, 235)'
-                    }
-                  },
-                  y: {
-                    grid: {
-                      color: 'rgba(229, 231, 235, 0.1)'
-                    },
-                    ticks: {
-                      color: 'rgb(229, 231, 235)'
-                    }
-                  }
-                }
-              }}
+              options={chartOptions}
             />
           </div>
         </Card>

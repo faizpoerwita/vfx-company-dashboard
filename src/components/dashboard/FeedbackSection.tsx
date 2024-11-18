@@ -1,9 +1,17 @@
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { Card } from "@/components/ui/card";
 import { IconMessageCircle2, IconThumbUp, IconClock } from '@tabler/icons-react';
-import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards";
 
-const feedbackData = [
+interface FeedbackItem {
+  project: string;
+  feedback: string;
+  reviewer: string;
+  role: string;
+  date: string;
+  rating: number;
+}
+
+const feedbackData: FeedbackItem[] = [
   {
     project: "Product Animation Campaign",
     feedback: "Excellent attention to detail in lighting and texturing",
