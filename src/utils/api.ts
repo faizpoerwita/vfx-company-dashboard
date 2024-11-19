@@ -70,6 +70,22 @@ class ApiClient {
     }
   }
 
+  // Project endpoints
+  async getProjectStats() {
+    try {
+      const response = await this.client.get('/stats/projects')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching project stats:', error)
+      return {
+        totalProjects: 0,
+        completedProjects: 0,
+        ongoingProjects: 0,
+        delayedProjects: 0
+      }
+    }
+  }
+
   // Analytics endpoints
   analytics = {
     roleDistribution: async () => {

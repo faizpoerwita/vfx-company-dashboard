@@ -17,11 +17,19 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
+  // Add CORS headers to all responses
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json',
+  };
+
   // Verify token
   const authResult = await authenticateToken(event);
   if (!authResult.success) {
     return {
       statusCode: 401,
+      headers,
       body: JSON.stringify({ message: 'Unauthorized' }),
     };
   }
@@ -33,33 +41,41 @@ export const handler: Handler = async (event, context) => {
     console.error('Database connection error:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ message: 'Internal server error' }),
     };
   }
 
-  if (event.path === '/.netlify/functions/stats/projects') {
+  const path = event.path.replace('/.netlify/functions/stats/', '');
+
+  if (path === 'projects' || path === '') {
     try {
       // For now, return mock data
+      const mockData = {
+        totalProjects: 10,
+        completedProjects: 4,
+        ongoingProjects: 5,
+        delayedProjects: 1,
+      };
+
       return {
         statusCode: 200,
-        body: JSON.stringify({
-          totalProjects: 10,
-          completedProjects: 4,
-          ongoingProjects: 5,
-          delayedProjects: 1,
-        }),
+        headers,
+        body: JSON.stringify(mockData),
       };
     } catch (error) {
       console.error('Error fetching project stats:', error);
       return {
         statusCode: 500,
-        body: JSON.stringify({ message: 'Error fetching project stats' }),
+        headers,
+        body: JSON.stringify({ message: 'Error fetching project statistics' }),
       };
     }
   }
 
   return {
     statusCode: 404,
+    headers,
     body: JSON.stringify({ message: 'Not found' }),
   };
 };
