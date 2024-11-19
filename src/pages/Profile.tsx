@@ -42,6 +42,7 @@ interface ProfileFormData {
   portfolio: string;
   bio: string;
   onboardingCompleted: boolean;
+  dislikes: string[]; // Added dislikes field
 }
 
 // Menggunakan kategori skill yang sama dari Onboarding
@@ -91,37 +92,41 @@ const profileSchema = z.object({
   bio: z.string().max(500, 'Bio maksimal 500 karakter'),
 });
 
+const initialFormData: ProfileFormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  skills: [],
+  workPreferences: [],
+  experienceLevel: 'Beginner',
+  portfolio: '',
+  bio: '',
+  onboardingCompleted: false,
+  dislikes: [] // Initialize dislikes as empty array
+};
+
 const Profile = () => {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState<ProfileFormData>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    skills: user?.skills || [],
-    workPreferences: transformPreferencesForFrontend(user.workPreferences || []),
-    experienceLevel: user?.experienceLevel || 'Beginner',
-    portfolio: user?.portfolio || '',
-    bio: user?.bio || '',
-    onboardingCompleted: user?.onboardingCompleted || false
-  });
+  const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
 
   // Update form data when user data changes
   useEffect(() => {
     if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        email: user?.email || '',
         skills: Array.isArray(user.skills) ? user.skills.map(skill => 
           typeof skill === 'string' ? { name: skill, level: 'Beginner' } : skill
         ) : [],
         workPreferences: transformPreferencesForFrontend(user.workPreferences || []),
-        experienceLevel: user.experienceLevel || 'Beginner',
-        portfolio: user.portfolio || '',
-        bio: user.bio || '',
-        onboardingCompleted: user.onboardingCompleted || false
+        experienceLevel: user?.experienceLevel || 'Beginner',
+        portfolio: user?.portfolio || '',
+        bio: user?.bio || '',
+        onboardingCompleted: user?.onboardingCompleted || false,
+        dislikes: user?.dislikes || [] // Initialize dislikes from user data
       });
     }
   }, [user]);
@@ -157,7 +162,8 @@ const Profile = () => {
         experienceLevel: data.experienceLevel || 'Beginner',
         portfolio: data.portfolio || '',
         bio: data.bio || '',
-        onboardingCompleted: data.onboardingCompleted || false
+        onboardingCompleted: data.onboardingCompleted || false,
+        dislikes: data.dislikes || [] // Initialize dislikes from API data
       });
     } catch (error) {
       console.error('Profile fetch error:', {
@@ -190,7 +196,8 @@ const Profile = () => {
         workPreferences: transformPreferencesForBackend(validatedData.workPreferences),
         experienceLevel: validatedData.experienceLevel,
         portfolio: validatedData.portfolio || '',
-        bio: validatedData.bio
+        bio: validatedData.bio,
+        dislikes: validatedData.dislikes // Include dislikes in transformed data
       };
 
       console.log('Transformed data for backend:', transformedData);
@@ -528,7 +535,7 @@ const Profile = () => {
                             setFormData({ ...formData, dislikes: newDislikes });
                           }}
                           className={`px-4 py-2 rounded-lg border transition-colors ${
-                            formData.dislikes.includes(dislike)
+                            formData.dislikes?.includes(dislike)
                               ? 'bg-rose-500/20 border-rose-500 text-rose-400'
                               : 'bg-neutral-900 border-neutral-800 text-neutral-400'
                           } hover:bg-neutral-800`}

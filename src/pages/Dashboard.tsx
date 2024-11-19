@@ -62,8 +62,8 @@ const Dashboard: React.FC = () => {
     const fetchStats = async () => {
       try {
         setIsLoadingStats(true);
-        const response = await api.getProjectStats();
-        setStats(response);
+        const stats = await api.getProjectStats();
+        setStats(stats);
       } catch (error) {
         console.error('Error fetching stats:', error);
         toast.error('Failed to load project statistics');
