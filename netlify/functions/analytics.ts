@@ -17,11 +17,19 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
+  // Common headers for all responses
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json',
+  };
+
   // Verify token
   const authResult = await authenticateToken(event);
   if (!authResult.success) {
     return {
       statusCode: 401,
+      headers,
       body: JSON.stringify({ message: 'Unauthorized' }),
     };
   }
@@ -33,6 +41,7 @@ export const handler: Handler = async (event, context) => {
     console.error('Database connection error:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ message: 'Internal server error' }),
     };
   }
@@ -47,15 +56,18 @@ export const handler: Handler = async (event, context) => {
         ]);
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(roleDistribution),
         };
 
       case 'experience':
         const experienceDistribution = await User.aggregate([
+          { $match: { experienceLevel: { $exists: true } } },
           { $group: { _id: '$experienceLevel', count: { $sum: 1 } } }
         ]);
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(experienceDistribution),
         };
 
@@ -74,6 +86,7 @@ export const handler: Handler = async (event, context) => {
         ]);
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(skillsDistribution),
         };
 
@@ -94,21 +107,24 @@ export const handler: Handler = async (event, context) => {
         ]);
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(workPreferences),
         };
 
       case 'dislikes':
         const dislikedAreas = await User.aggregate([
+          { $match: { dislikes: { $exists: true } } },
           { $unwind: '$dislikes' },
           { $group: { _id: '$dislikes', count: { $sum: 1 } } }
         ]);
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(dislikedAreas),
         };
 
       case 'departments':
-        const departmentStats = await User.aggregate([
+        const [departmentStats] = await User.aggregate([
           {
             $facet: {
               totalUsers: [{ $count: 'count' }],
@@ -116,26 +132,45 @@ export const handler: Handler = async (event, context) => {
                 { $group: { _id: '$role', count: { $sum: 1 } } }
               ],
               departments: [
-                { $group: { _id: '$department', count: { $sum: 1 } } }
+                { $group: { _id: '$department', count: { $sum: 1 } } },
+                {
+                  $lookup: {
+                    from: 'users',
+                    let: { dept: '$_id' },
+                    pipeline: [
+                      { $match: { $expr: { $eq: ['$department', '$$dept'] } } },
+                      { $group: { _id: '$role', count: { $sum: 1 } } }
+                    ],
+                    as: 'roleBreakdown'
+                  }
+                }
               ]
             }
           }
         ]);
 
         const formattedDepartmentStats = {
-          totalUsers: departmentStats[0].totalUsers[0]?.count || 0,
-          roleDistribution: departmentStats[0].roleDistribution || [],
-          departments: departmentStats[0].departments || []
+          totalUsers: departmentStats.totalUsers[0]?.count || 0,
+          roleDistribution: departmentStats.roleDistribution || [],
+          departments: departmentStats.departments.map((dept: any) => ({
+            ...dept,
+            roleBreakdown: dept.roleBreakdown.reduce((acc: any, role: any) => {
+              acc[role._id] = role.count;
+              return acc;
+            }, {})
+          }))
         };
 
         return {
           statusCode: 200,
+          headers,
           body: JSON.stringify(formattedDepartmentStats),
         };
 
       default:
         return {
           statusCode: 404,
+          headers,
           body: JSON.stringify({ message: 'Not found' }),
         };
     }
@@ -143,7 +178,8 @@ export const handler: Handler = async (event, context) => {
     console.error('Analytics error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Error fetching analytics' }),
+      headers,
+      body: JSON.stringify({ message: 'Error fetching analytics data' }),
     };
   }
 };

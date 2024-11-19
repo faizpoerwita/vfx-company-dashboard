@@ -59,53 +59,43 @@ export const useAnalytics = () => {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching analytics data...');
-
-      const responses = await Promise.all([
+      const [
+        roleRes,
+        experienceRes,
+        skillsRes,
+        preferencesRes,
+        dislikesRes,
+        departmentRes
+      ] = await Promise.all([
         api.analytics.roleDistribution(),
         api.analytics.experienceDistribution(),
         api.analytics.skillsDistribution(),
         api.analytics.workPreferences(),
         api.analytics.dislikedAreas(),
-        api.analytics.departmentDistribution(),
+        api.analytics.departmentDistribution()
       ]);
 
-      // Log individual responses
-      responses.forEach((res, index) => {
-        const endpoints = ['role', 'experience', 'skills', 'preferences', 'areas', 'department'];
-        console.log(`${endpoints[index]} response:`, res);
-      });
-
-      // Check if any response indicates failure
-      const failedResponses = responses.filter(res => !res.success);
-      
-      if (failedResponses.length > 0) {
-        console.error('Failed responses:', failedResponses);
-        throw new Error('Failed to fetch analytics data');
+      // Validate responses
+      if (!roleRes.success || !experienceRes.success || !skillsRes.success || 
+          !preferencesRes.success || !dislikesRes.success || !departmentRes.success) {
+        throw new Error('Failed to fetch some analytics data');
       }
 
-      setData({
-        roleDistribution: responses[0].data || [],
-        experienceDistribution: responses[1].data || [],
-        skillsDistribution: responses[2].data || [],
-        workPreferences: responses[3].data || [],
-        dislikedAreas: responses[4].data || [],
-        departmentDistribution: responses[5].data || {
+      // Transform and validate data
+      const analyticsData: AnalyticsData = {
+        roleDistribution: Array.isArray(roleRes.data) ? roleRes.data : [],
+        experienceDistribution: Array.isArray(experienceRes.data) ? experienceRes.data : [],
+        skillsDistribution: Array.isArray(skillsRes.data) ? skillsRes.data : [],
+        workPreferences: Array.isArray(preferencesRes.data) ? preferencesRes.data : [],
+        dislikedAreas: Array.isArray(dislikesRes.data) ? dislikesRes.data : [],
+        departmentDistribution: departmentRes.data || {
           totalUsers: 0,
           roleDistribution: [],
-          departments: [],
-        },
-      });
+          departments: []
+        }
+      };
 
-      console.log('Analytics data fetched successfully:', {
-        roleDistribution: responses[0].data,
-        experienceDistribution: responses[1].data,
-        skillsDistribution: responses[2].data,
-        workPreferences: responses[3].data,
-        dislikedAreas: responses[4].data,
-        departmentDistribution: responses[5].data,
-      });
-
+      setData(analyticsData);
     } catch (err) {
       console.error('Error fetching analytics:', err);
       
@@ -122,26 +112,16 @@ export const useAnalytics = () => {
       }
       
       setError(errorMessage);
-      // Set empty arrays for all data points on error
-      setData({
-        roleDistribution: [],
-        experienceDistribution: [],
-        skillsDistribution: [],
-        workPreferences: [],
-        dislikedAreas: [],
-        departmentDistribution: {
-          totalUsers: 0,
-          roleDistribution: [],
-          departments: [],
-        },
-      });
+      setData(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAnalytics();
+    if (isAuthenticated) {
+      fetchAnalytics();
+    }
   }, [isAuthenticated]);
 
   return { data, loading, error, refetch: fetchAnalytics };
