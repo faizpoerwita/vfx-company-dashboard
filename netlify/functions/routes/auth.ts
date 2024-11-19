@@ -131,6 +131,13 @@ router.post('/signup', async (req, res) => {
       onboardingCompleted: false
     });
 
+    // Log user object before saving (excluding sensitive data)
+    console.log('Creating user:', {
+      email: user.email,
+      role: user.role,
+      onboardingCompleted: user.onboardingCompleted
+    });
+
     await user.save();
 
     // Generate token
@@ -153,9 +160,27 @@ router.post('/signup', async (req, res) => {
     });
   } catch (error) {
     console.error('Signup error:', error);
+    
+    // Check for specific MongoDB errors
+    if (error instanceof Error) {
+      if (error.name === 'ValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Data tidak valid',
+          details: error.message
+        });
+      } else if (error.name === 'MongoServerError' && (error as any).code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email sudah terdaftar'
+        });
+      }
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.'
+      message: 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
