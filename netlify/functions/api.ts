@@ -21,43 +21,19 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check route
-router.get('/health', async (req, res) => {
-  try {
-    // Test database connection
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    
-    // Get database stats
-    const dbStats = await mongoose.connection.db.stats();
-    
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      database: {
-        status: dbStatus,
-        name: mongoose.connection.name,
-        collections: dbStats.collections,
-        documents: dbStats.objects
-      }
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({ 
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      database: {
-        status: 'error',
-        error: error.message
-      }
-    });
-  }
+// Basic health check route
+router.get('/health', (req, res) => {
+  console.log('Health check endpoint hit');
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: {
+      frontend_url: process.env.FRONTEND_URL || 'not set',
+      node_env: process.env.NODE_ENV || 'not set',
+      mongodb_uri: process.env.MONGODB_URI ? 'set' : 'not set'
+    }
+  });
 });
-
-// Routes
-router.use('/auth', authRoutes);
-router.use('/projects', projectRoutes);
-router.use('/tasks', taskRoutes);
-router.use('/users', userRoutes);
 
 // MongoDB Connection
 let isConnected = false;
@@ -66,20 +42,25 @@ const connectDB = async () => {
   if (isConnected) return;
 
   try {
+    console.log('Attempting to connect to MongoDB...');
     await mongoose.connect(process.env.MONGODB_URI!);
     isConnected = true;
-    console.log('Connected to MongoDB');
+    console.log('Successfully connected to MongoDB');
   } catch (err) {
     console.error('MongoDB connection error:', err);
     throw err;
   }
 };
 
+// Routes
+router.use('/auth', authRoutes);
+router.use('/projects', projectRoutes);
+router.use('/tasks', taskRoutes);
+router.use('/users', userRoutes);
+
 // Error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
   console.error('API Error:', err);
-  
-  // Send a user-friendly error response
   res.status(500).json({ 
     success: false,
     message: 'Terjadi kesalahan pada server',
@@ -91,9 +72,24 @@ app.use('/.netlify/functions/api', router);
 
 // Handler
 export const handler: Handler = async (event, context) => {
-  // Connect to MongoDB before handling the request
-  await connectDB();
+  console.log('Function invoked:', event.path);
   
-  // Serverless handler
-  return serverless(app)(event, context);
+  try {
+    // Connect to MongoDB before handling the request
+    await connectDB();
+    
+    // Serverless handler
+    const result = await serverless(app)(event, context);
+    console.log('Response:', result.statusCode);
+    return result;
+  } catch (error) {
+    console.error('Handler error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ 
+        success: false,
+        message: 'Terjadi kesalahan pada server'
+      })
+    };
+  }
 };
