@@ -21,11 +21,29 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <Toaster 
         position="top-right"
         toastOptions={{
-          className: 'bg-zinc-800 text-white',
+          className: '',
           style: {
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            background: 'rgb(20, 20, 20)',
+            border: '1px solid rgba(185, 28, 28, 0.2)',
             padding: '16px',
-            color: '#fff',
+            color: 'rgb(248, 113, 113)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          },
+          error: {
+            icon: '⚠️',
+            style: {
+              background: 'rgba(127, 29, 29, 0.2)',
+              border: '1px solid rgba(185, 28, 28, 0.5)',
+              color: 'rgb(248, 113, 113)',
+            },
+          },
+          success: {
+            style: {
+              background: 'rgba(6, 78, 59, 0.2)',
+              border: '1px solid rgba(4, 120, 87, 0.5)',
+              color: 'rgb(52, 211, 153)',
+            },
           },
         }}
       />
