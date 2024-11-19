@@ -51,7 +51,13 @@ const connectDB = async () => {
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4,
+      retryWrites: true,
+      w: 'majority',
+      ssl: true,
+      authSource: 'admin'
     };
     
     await mongoose.connect(process.env.MONGODB_URI!, options as any);
