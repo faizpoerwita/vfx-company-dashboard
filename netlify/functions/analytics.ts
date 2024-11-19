@@ -3,6 +3,20 @@ import { connectToDatabase } from './utils/db';
 import { User } from './models/User';
 import { authenticateToken } from './middleware/auth';
 
+const createResponse = (statusCode: number, data: any = null, error: string | null = null) => ({
+  statusCode,
+  headers: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    success: statusCode === 200,
+    data,
+    ...(error && { error })
+  })
+});
+
 export const handler: Handler = async (event, context) => {
   // Enable CORS
   if (event.httpMethod === 'OPTIONS') {
@@ -17,21 +31,10 @@ export const handler: Handler = async (event, context) => {
     };
   }
 
-  // Common headers for all responses
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json',
-  };
-
   // Verify token
   const authResult = await authenticateToken(event);
   if (!authResult.success) {
-    return {
-      statusCode: 401,
-      headers,
-      body: JSON.stringify({ message: 'Unauthorized' }),
-    };
+    return createResponse(401, null, 'Unauthorized');
   }
 
   // Connect to database
@@ -39,39 +42,29 @@ export const handler: Handler = async (event, context) => {
     await connectToDatabase();
   } catch (error) {
     console.error('Database connection error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ message: 'Internal server error' }),
-    };
+    return createResponse(500, null, 'Internal server error');
   }
 
   const path = event.path.replace('/.netlify/functions/analytics/', '');
 
   try {
     switch (path) {
-      case 'roles':
+      case 'role-distribution':
         const roleDistribution = await User.aggregate([
-          { $group: { _id: '$role', count: { $sum: 1 } } }
+          { $group: { _id: '$role', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
         ]);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(roleDistribution),
-        };
+        return createResponse(200, roleDistribution);
 
-      case 'experience':
+      case 'experience-distribution':
         const experienceDistribution = await User.aggregate([
           { $match: { experienceLevel: { $exists: true } } },
-          { $group: { _id: '$experienceLevel', count: { $sum: 1 } } }
+          { $group: { _id: '$experienceLevel', count: { $sum: 1 } } },
+          { $sort: { _id: 1 } }
         ]);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(experienceDistribution),
-        };
+        return createResponse(200, experienceDistribution);
 
-      case 'skills':
+      case 'skills-distribution':
         const skillsDistribution = await User.aggregate([
           { $unwind: '$skills' },
           {
@@ -82,15 +75,12 @@ export const handler: Handler = async (event, context) => {
               },
               count: { $sum: 1 }
             }
-          }
+          },
+          { $sort: { '_id.name': 1, '_id.level': 1 } }
         ]);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(skillsDistribution),
-        };
+        return createResponse(200, skillsDistribution);
 
-      case 'preferences':
+      case 'work-preferences':
         const workPreferences = await User.aggregate([
           { $unwind: '$workPreferences' },
           {
@@ -103,27 +93,21 @@ export const handler: Handler = async (event, context) => {
                 $sum: { $cond: [{ $eq: ['$workPreferences.value', false] }, 1, 0] }
               }
             }
-          }
+          },
+          { $sort: { _id: 1 } }
         ]);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(workPreferences),
-        };
+        return createResponse(200, workPreferences);
 
-      case 'dislikes':
+      case 'disliked-areas':
         const dislikedAreas = await User.aggregate([
           { $match: { dislikes: { $exists: true } } },
           { $unwind: '$dislikes' },
-          { $group: { _id: '$dislikes', count: { $sum: 1 } } }
+          { $group: { _id: '$dislikes', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
         ]);
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify(dislikedAreas),
-        };
+        return createResponse(200, dislikedAreas);
 
-      case 'departments':
+      case 'department-distribution':
         const [departmentStats] = await User.aggregate([
           {
             $facet: {
@@ -131,12 +115,8 @@ export const handler: Handler = async (event, context) => {
                 { $count: 'count' }
               ],
               roleDistribution: [
-                { 
-                  $group: { 
-                    _id: '$role', 
-                    count: { $sum: 1 } 
-                  } 
-                }
+                { $group: { _id: '$role', count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
               ],
               departments: [
                 { 
@@ -179,7 +159,8 @@ export const handler: Handler = async (event, context) => {
                     roleBreakdown: 1,
                     users: 0
                   }
-                }
+                },
+                { $sort: { count: -1 } }
               ]
             }
           },
@@ -190,29 +171,17 @@ export const handler: Handler = async (event, context) => {
           }
         ]);
 
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            totalUsers: departmentStats.totalUsers || 0,
-            roleDistribution: departmentStats.roleDistribution || [],
-            departments: departmentStats.departments || []
-          })
-        };
+        return createResponse(200, {
+          totalUsers: departmentStats.totalUsers || 0,
+          roleDistribution: departmentStats.roleDistribution || [],
+          departments: departmentStats.departments || []
+        });
 
       default:
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({ message: 'Not found' }),
-        };
+        return createResponse(404, null, 'Endpoint not found');
     }
   } catch (error) {
     console.error('Analytics error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ message: 'Error fetching analytics data' }),
-    };
+    return createResponse(500, null, 'Failed to fetch analytics data');
   }
 };
