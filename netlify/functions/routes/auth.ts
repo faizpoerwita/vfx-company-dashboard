@@ -70,7 +70,24 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, role } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !firstName || !lastName || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Semua field harus diisi'
+      });
+    }
+
+    // Validate role
+    const validRoles = ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Producer'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role tidak valid'
+      });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -91,7 +108,7 @@ router.post('/signup', async (req, res) => {
       password: hashedPassword,
       firstName,
       lastName,
-      role: 'user',
+      role,
       onboardingCompleted: false
     });
 
@@ -104,7 +121,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.status(201).json({
+    res.json({
       success: true,
       token,
       user: {

@@ -18,7 +18,7 @@ export default function SignUp() {
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signUp } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
 
   const roles: Role[] = ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Producer'];
@@ -27,24 +27,33 @@ export default function SignUp() {
     e.preventDefault();
     setError('');
 
+    // Validate all required fields
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.role || !formData.firstName || !formData.lastName) {
+      setError('Semua field harus diisi');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Format email tidak valid');
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError('Password minimal 6 karakter');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Password tidak cocok');
       return;
     }
 
-    if (!formData.role) {
-      setError('Silakan pilih peran Anda');
-      return;
-    }
-
-    if (!formData.firstName || !formData.lastName) {
-      setError('Nama depan dan belakang harus diisi');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await signUp({
+      await signup({
         email: formData.email,
         password: formData.password,
         role: formData.role,
