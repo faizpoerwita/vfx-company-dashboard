@@ -11,6 +11,13 @@ router.post('/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email dan password harus diisi'
+      });
+    }
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
@@ -56,7 +63,7 @@ router.post('/signin', async (req, res) => {
     console.error('Signin error:', error);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat mencoba masuk'
+      message: 'Terjadi kesalahan saat mencoba masuk. Silakan coba lagi.'
     });
   }
 });

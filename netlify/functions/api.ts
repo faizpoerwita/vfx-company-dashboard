@@ -33,15 +33,29 @@ router.use('/tasks', taskRoutes);
 router.use('/users', userRoutes);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI!)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) return;
+
+  try {
+    await mongoose.connect(process.env.MONGODB_URI!);
+    isConnected = true;
+    console.log('Connected to MongoDB');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    throw err;
+  }
+};
 
 // Error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
   console.error('API Error:', err);
+  
+  // Send a user-friendly error response
   res.status(500).json({ 
-    message: 'Internal server error',
+    success: false,
+    message: 'Terjadi kesalahan pada server',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
@@ -49,18 +63,10 @@ app.use((err: any, req: any, res: any, next: any) => {
 app.use('/.netlify/functions/api', router);
 
 // Handler
-const handler: Handler = async (event, context) => {
-  const handler = serverless(app);
-  try {
-    const result = await handler(event, context);
-    return result;
-  } catch (error) {
-    console.error('Serverless handler error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Internal server error' })
-    };
-  }
+export const handler: Handler = async (event, context) => {
+  // Connect to MongoDB before handling the request
+  await connectDB();
+  
+  // Serverless handler
+  return serverless(app)(event, context);
 };
-
-export { handler };
