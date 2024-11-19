@@ -73,7 +73,7 @@ const Analytics = () => {
       setRoleUsersLoading(true);
       
       const response = await api.analytics.getUsersByRole(role);
-      if (response?.data) {
+      if (response?.success && response.data) {
         setRoleUsers(response.data);
       } else {
         console.error('Invalid response format for users by role');
@@ -280,7 +280,7 @@ const Analytics = () => {
             <BackgroundGradient className="p-6 rounded-xl">
               <h3 className="text-xl font-semibold text-white mb-4">Role Distribution</h3>
               <div className="h-[300px]">
-                {data?.roleDistribution?.length ? (
+                {data?.roleDistribution && data.roleDistribution.length > 0 ? (
                   <Doughnut
                     data={{
                       labels: data.roleDistribution.map(item => item._id),
@@ -291,10 +291,30 @@ const Analytics = () => {
                           'rgba(54, 162, 235, 0.8)',
                           'rgba(255, 206, 86, 0.8)',
                           'rgba(75, 192, 192, 0.8)',
+                          'rgba(153, 102, 255, 0.8)',
+                          'rgba(255, 159, 64, 0.8)',
                         ],
+                        borderColor: [
+                          'rgba(255, 99, 132, 1)',
+                          'rgba(54, 162, 235, 1)',
+                          'rgba(255, 206, 86, 1)',
+                          'rgba(75, 192, 192, 1)',
+                          'rgba(153, 102, 255, 1)',
+                          'rgba(255, 159, 64, 1)',
+                        ],
+                        borderWidth: 1,
                       }],
                     }}
-                    options={chartOptions}
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          ...chartOptions.plugins.legend,
+                          display: true,
+                        },
+                      },
+                    }}
                   />
                 ) : (
                   <EmptyState />
@@ -306,7 +326,7 @@ const Analytics = () => {
             <BackgroundGradient className="p-6 rounded-xl">
               <h3 className="text-xl font-semibold text-white mb-4">Experience Distribution</h3>
               <div className="h-[300px]">
-                {data?.experienceDistribution?.length ? (
+                {data?.experienceDistribution && data.experienceDistribution.length > 0 ? (
                   <Bar
                     data={{
                       labels: data.experienceDistribution.map(item => item._id),
@@ -314,9 +334,20 @@ const Analytics = () => {
                         label: 'Team Members',
                         data: data.experienceDistribution.map(item => item.count),
                         backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
                       }],
                     }}
-                    options={chartOptions}
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          ...chartOptions.plugins.legend,
+                          display: false,
+                        },
+                      },
+                    }}
                   />
                 ) : (
                   <EmptyState />
@@ -328,20 +359,29 @@ const Analytics = () => {
             <BackgroundGradient className="p-6 rounded-xl">
               <h3 className="text-xl font-semibold text-white mb-4">Skills Distribution</h3>
               <div className="h-[300px]">
-                {data?.skillsDistribution?.length ? (
+                {data?.skillsDistribution && data.skillsDistribution.length > 0 ? (
                   <Line
                     data={{
                       labels: data.skillsDistribution.map(item => item._id.name),
                       datasets: [{
-                        label: 'Skill Level',
+                        label: 'Team Members',
                         data: data.skillsDistribution.map(item => item.count),
                         borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
                         tension: 0.4,
                         fill: true,
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
                       }],
                     }}
-                    options={chartOptions}
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          ...chartOptions.plugins.legend,
+                          display: false,
+                        },
+                      },
+                    }}
                   />
                 ) : (
                   <EmptyState />
@@ -353,7 +393,7 @@ const Analytics = () => {
             <BackgroundGradient className="p-6 rounded-xl">
               <h3 className="text-xl font-semibold text-white mb-4">Work Preferences</h3>
               <div className="h-[300px]">
-                {data?.workPreferences?.length ? (
+                {data?.workPreferences && data.workPreferences.length > 0 ? (
                   <Bar
                     data={{
                       labels: data.workPreferences.map(item => item._id),
@@ -362,11 +402,15 @@ const Analytics = () => {
                           label: 'Preferred',
                           data: data.workPreferences.map(item => item.trueCount),
                           backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                          borderColor: 'rgba(75, 192, 192, 1)',
+                          borderWidth: 1,
                         },
                         {
                           label: 'Not Preferred',
                           data: data.workPreferences.map(item => item.falseCount),
                           backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                          borderColor: 'rgba(255, 99, 132, 1)',
+                          borderWidth: 1,
                         },
                       ],
                     }}

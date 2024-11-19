@@ -28,6 +28,21 @@ const userSchema = new mongoose.Schema({
     enum: ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Producer', 'admin'],
     default: '3D Artist'
   },
+  department: {
+    type: String,
+    required: false,
+    enum: ['Animation', 'VFX', 'Production', 'Technical', 'Management'],
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
+  experienceLevel: {
+    type: String,
+    enum: ['Junior', 'Mid-Level', 'Senior', 'Lead'],
+    required: false
+  },
   phone: String,
   bio: String,
   skills: [{
@@ -39,8 +54,9 @@ const userSchema = new mongoose.Schema({
   }],
   workPreferences: [{
     name: String,
-    value: String
+    value: Boolean
   }],
+  dislikes: [String],
   learningInterests: String,
   portfolio: String,
   onboardingCompleted: {

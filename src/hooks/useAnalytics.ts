@@ -48,16 +48,11 @@ export const useAnalytics = () => {
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
 
-  const fetchAnalytics = async () => {
-    if (!isAuthenticated) {
-      setError('Authentication required');
-      setLoading(false);
-      return;
-    }
-
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching analytics data...');
 
       const responses = await Promise.all([
         api.analytics.roleDistribution(),
@@ -65,50 +60,61 @@ export const useAnalytics = () => {
         api.analytics.skillsDistribution(),
         api.analytics.workPreferences(),
         api.analytics.dislikedAreas(),
-        api.analytics.departmentDistribution()
+        api.analytics.departmentDistribution(),
       ]);
 
-      // Check if any response indicates failure
-      const failedResponses = responses.filter(res => !res.success);
-      if (failedResponses.length > 0) {
-        throw new Error('Failed to fetch analytics data');
+      // Log individual responses
+      responses.forEach((res, index) => {
+        const endpoints = ['role', 'experience', 'skills', 'preferences', 'areas', 'department'];
+        console.log(`${endpoints[index]} response:`, res);
+      });
+
+      // Validate responses
+      const invalidResponses = responses.filter(res => !res?.success);
+      if (invalidResponses.length > 0) {
+        console.error('Invalid responses:', invalidResponses);
+        throw new Error('Failed to fetch some analytics data');
       }
 
-      const [
-        roleRes,
-        experienceRes,
-        skillsRes,
-        preferencesRes,
-        dislikesRes,
-        departmentRes
-      ] = responses;
-
-      const analyticsData: AnalyticsData = {
-        roleDistribution: roleRes.data || [],
-        experienceDistribution: experienceRes.data || [],
-        skillsDistribution: skillsRes.data || [],
-        workPreferences: preferencesRes.data || [],
-        dislikedAreas: dislikesRes.data || [],
-        departmentDistribution: departmentRes.data || {
+      setData({
+        roleDistribution: responses[0].data || [],
+        experienceDistribution: responses[1].data || [],
+        skillsDistribution: responses[2].data || [],
+        workPreferences: responses[3].data || [],
+        dislikedAreas: responses[4].data || [],
+        departmentDistribution: responses[5].data || {
           totalUsers: 0,
           roleDistribution: [],
-          departments: []
-        }
-      };
+          departments: [],
+        },
+      });
 
-      setData(analyticsData);
+      console.log('Analytics data fetched successfully:', {
+        roleDistribution: responses[0].data,
+        experienceDistribution: responses[1].data,
+        skillsDistribution: responses[2].data,
+        workPreferences: responses[3].data,
+        dislikedAreas: responses[4].data,
+        departmentDistribution: responses[5].data,
+      });
+
     } catch (err) {
-      console.error('Error fetching analytics:', err);
-      let errorMessage = 'Failed to fetch analytics data';
+      console.error('Error fetching analytics data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch analytics data');
       
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (err instanceof AxiosError && err.response?.data?.error) {
-        errorMessage = err.response.data.error;
-      }
-      
-      setError(errorMessage);
-      setData(null);
+      // Set default empty data structure
+      setData({
+        roleDistribution: [],
+        experienceDistribution: [],
+        skillsDistribution: [],
+        workPreferences: [],
+        dislikedAreas: [],
+        departmentDistribution: {
+          totalUsers: 0,
+          roleDistribution: [],
+          departments: [],
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -116,9 +122,9 @@ export const useAnalytics = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchAnalytics();
+      fetchData();
     }
   }, [isAuthenticated]);
 
-  return { data, loading, error, refetch: fetchAnalytics };
+  return { data, loading, error, refetch: fetchData };
 };

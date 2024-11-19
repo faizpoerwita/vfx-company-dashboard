@@ -46,11 +46,14 @@ export const handler: Handler = async (event, context) => {
   }
 
   const path = event.path.replace('/.netlify/functions/analytics/', '');
+  const segments = path.split('/');
+  const endpoint = segments[0];
 
   try {
-    switch (path) {
+    switch (endpoint) {
       case 'role-distribution':
         const roleDistribution = await User.aggregate([
+          { $match: { status: 'active' } },
           { $group: { _id: '$role', count: { $sum: 1 } } },
           { $sort: { count: -1 } }
         ]);
@@ -58,7 +61,7 @@ export const handler: Handler = async (event, context) => {
 
       case 'experience-distribution':
         const experienceDistribution = await User.aggregate([
-          { $match: { experienceLevel: { $exists: true } } },
+          { $match: { experienceLevel: { $exists: true }, status: 'active' } },
           { $group: { _id: '$experienceLevel', count: { $sum: 1 } } },
           { $sort: { _id: 1 } }
         ]);
@@ -66,6 +69,7 @@ export const handler: Handler = async (event, context) => {
 
       case 'skills-distribution':
         const skillsDistribution = await User.aggregate([
+          { $match: { status: 'active' } },
           { $unwind: '$skills' },
           {
             $group: {
@@ -82,6 +86,7 @@ export const handler: Handler = async (event, context) => {
 
       case 'work-preferences':
         const workPreferences = await User.aggregate([
+          { $match: { status: 'active' } },
           { $unwind: '$workPreferences' },
           {
             $group: {
@@ -100,7 +105,7 @@ export const handler: Handler = async (event, context) => {
 
       case 'disliked-areas':
         const dislikedAreas = await User.aggregate([
-          { $match: { dislikes: { $exists: true } } },
+          { $match: { dislikes: { $exists: true }, status: 'active' } },
           { $unwind: '$dislikes' },
           { $group: { _id: '$dislikes', count: { $sum: 1 } } },
           { $sort: { count: -1 } }
@@ -109,6 +114,7 @@ export const handler: Handler = async (event, context) => {
 
       case 'department-distribution':
         const [departmentStats] = await User.aggregate([
+          { $match: { status: 'active' } },
           {
             $facet: {
               totalUsers: [
@@ -123,41 +129,52 @@ export const handler: Handler = async (event, context) => {
                   $group: { 
                     _id: '$department', 
                     count: { $sum: 1 },
-                    users: { $push: '$$ROOT' }
+                    roles: {
+                      $push: {
+                        role: '$role',
+                        experienceLevel: '$experienceLevel'
+                      }
+                    }
                   } 
                 },
                 {
-                  $addFields: {
+                  $project: {
+                    _id: 1,
+                    count: 1,
                     roleBreakdown: {
                       $reduce: {
-                        input: '$users',
+                        input: '$roles',
                         initialValue: {},
                         in: {
                           $mergeObjects: [
                             '$$value',
                             {
-                              $literal: {
-                                $concat: [
-                                  '{"',
-                                  '$$this.role',
-                                  '": ',
-                                  { $add: [{ $ifNull: ['$$value.$$this.role', 0] }, 1] },
-                                  '}'
-                                ]
+                              $let: {
+                                vars: {
+                                  currentCount: {
+                                    $ifNull: [
+                                      { $getField: { field: { $toString: '$$this.role' }, input: '$$value' } },
+                                      0
+                                    ]
+                                  }
+                                },
+                                in: {
+                                  $literal: {
+                                    $concat: [
+                                      '{"',
+                                      '$$this.role',
+                                      '":',
+                                      { $add: ['$$currentCount', 1] },
+                                      '}'
+                                    ]
+                                  }
+                                }
                               }
                             }
                           ]
                         }
                       }
                     }
-                  }
-                },
-                {
-                  $project: {
-                    _id: 1,
-                    count: 1,
-                    roleBreakdown: 1,
-                    users: 0
                   }
                 },
                 { $sort: { count: -1 } }
@@ -176,6 +193,27 @@ export const handler: Handler = async (event, context) => {
           roleDistribution: departmentStats.roleDistribution || [],
           departments: departmentStats.departments || []
         });
+
+      case 'users-by-role':
+        if (!segments[1]) {
+          return createResponse(400, null, 'Role parameter is required');
+        }
+
+        const role = decodeURIComponent(segments[1]);
+        const users = await User.find(
+          { role, status: 'active' },
+          {
+            firstName: 1,
+            lastName: 1,
+            email: 1,
+            role: 1,
+            department: 1,
+            experienceLevel: 1,
+            status: 1
+          }
+        ).sort({ lastName: 1, firstName: 1 });
+
+        return createResponse(200, users);
 
       default:
         return createResponse(404, null, 'Endpoint not found');
