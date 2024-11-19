@@ -16,11 +16,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['@headlessui/react', '@radix-ui/react-avatar', '@radix-ui/react-dropdown-menu'],
+          charts: ['chart.js', 'react-chartjs-2'],
+          icons: ['@heroicons/react', '@tabler/icons-react'],
+          utils: ['axios', 'zod', 'react-hot-toast']
         },
       },
     },
@@ -30,16 +34,10 @@ export default defineConfig({
     strictPort: true,
     host: true,
     open: true,
-    cors: {
-      origin: ['http://localhost:5000'],
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-      credentials: true,
-    },
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8888/.netlify/functions/api',
         changeOrigin: true,
-        secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
