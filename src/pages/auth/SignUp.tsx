@@ -12,8 +12,6 @@ export default function SignUp() {
     email: '',
     password: '',
     confirmPassword: '',
-    firstName: '',
-    lastName: '',
     role: '' as Role,
   });
   const [error, setError] = useState('');
@@ -27,8 +25,16 @@ export default function SignUp() {
     e.preventDefault();
     setError('');
 
+    // Debug log
+    console.log('Form data before submission:', {
+      email: formData.email || 'missing',
+      password: formData.password ? 'provided' : 'missing',
+      confirmPassword: formData.confirmPassword ? 'provided' : 'missing',
+      role: formData.role || 'missing'
+    });
+
     // Validate all required fields
-    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.role || !formData.firstName || !formData.lastName) {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.role) {
       setError('Semua field harus diisi');
       return;
     }
@@ -56,9 +62,7 @@ export default function SignUp() {
       await signup({
         email: formData.email,
         password: formData.password,
-        role: formData.role,
-        firstName: formData.firstName,
-        lastName: formData.lastName
+        role: formData.role
       });
       navigate('/profile/setup', { replace: true });
     } catch (err: any) {
@@ -104,32 +108,6 @@ export default function SignUp() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-neutral-200 mb-2">
-                  Nama Depan
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-200 mb-2">
-                  Nama Belakang
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-4 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                />
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-neutral-200 mb-2">
                   Email

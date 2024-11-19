@@ -70,13 +70,34 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, role } = req.body;
+
+    // Log request data (excluding password)
+    console.log('Received signup request:', {
+      email: email || 'missing',
+      role: role || 'missing',
+      hasPassword: !!password
+    });
 
     // Validate required fields
-    if (!email || !password || !firstName || !lastName || !role) {
+    const missingFields = [];
+    if (!email) missingFields.push('email');
+    if (!password) missingFields.push('password');
+    if (!role) missingFields.push('role');
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Semua field harus diisi'
+        message: `Field berikut harus diisi: ${missingFields.join(', ')}`
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format email tidak valid'
       });
     }
 
@@ -85,7 +106,7 @@ router.post('/signup', async (req, res) => {
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Role tidak valid'
+        message: `Role tidak valid. Role yang tersedia: ${validRoles.join(', ')}`
       });
     }
 
@@ -102,33 +123,30 @@ router.post('/signup', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create user
     const user = new User({
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
       role,
       onboardingCompleted: false
     });
 
     await user.save();
 
-    // Create token
+    // Generate token
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.json({
+    // Send response
+    res.status(201).json({
       success: true,
       token,
       user: {
         _id: user._id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
         role: user.role,
         onboardingCompleted: user.onboardingCompleted
       }
@@ -137,7 +155,7 @@ router.post('/signup', async (req, res) => {
     console.error('Signup error:', error);
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat mencoba mendaftar'
+      message: 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.'
     });
   }
 });

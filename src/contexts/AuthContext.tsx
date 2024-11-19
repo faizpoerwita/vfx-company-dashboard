@@ -102,25 +102,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (data: SignupData): Promise<void> => {
     try {
+      // Log request data
+      console.log('Sending signup request with data:', {
+        email: data.email,
+        role: data.role,
+        hasPassword: !!data.password
+      });
+
       const response = await axios.post(
         `${API_URL}/auth/signup`,
         {
           email: data.email,
           password: data.password,
-          role: data.role,
-          firstName: data.firstName,
-          lastName: data.lastName
+          role: data.role
         },
         {
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Content-Type': 'application/json'
           }
         }
       );
 
-      if (!response.data || !response.data.success) {
-        throw new Error(response.data?.message || 'Gagal mendaftar');
+      if (!response.data) {
+        throw new Error('Tidak ada respons dari server');
+      }
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Gagal mendaftar');
       }
 
       const { token, user } = response.data;
@@ -140,6 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           message = 'Email sudah terdaftar';
         } else if (error.response?.data?.message) {
           message = error.response.data.message;
+        } else if (error.response?.status === 400) {
+          message = 'Data tidak valid. Pastikan semua field terisi dengan benar';
         }
       }
 
