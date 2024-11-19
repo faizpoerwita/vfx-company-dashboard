@@ -59,14 +59,7 @@ export const useAnalytics = () => {
       setLoading(true);
       setError(null);
 
-      const [
-        roleRes,
-        experienceRes,
-        skillsRes,
-        preferencesRes,
-        dislikesRes,
-        departmentRes
-      ] = await Promise.all([
+      const responses = await Promise.all([
         api.analytics.roleDistribution(),
         api.analytics.experienceDistribution(),
         api.analytics.skillsDistribution(),
@@ -75,19 +68,27 @@ export const useAnalytics = () => {
         api.analytics.departmentDistribution()
       ]);
 
-      // Validate responses
-      if (!roleRes.success || !experienceRes.success || !skillsRes.success || 
-          !preferencesRes.success || !dislikesRes.success || !departmentRes.success) {
-        throw new Error('Failed to fetch some analytics data');
+      // Check if any response indicates failure
+      const failedResponses = responses.filter(res => !res.success);
+      if (failedResponses.length > 0) {
+        throw new Error('Failed to fetch analytics data');
       }
 
-      // Transform and validate data
+      const [
+        roleRes,
+        experienceRes,
+        skillsRes,
+        preferencesRes,
+        dislikesRes,
+        departmentRes
+      ] = responses;
+
       const analyticsData: AnalyticsData = {
-        roleDistribution: Array.isArray(roleRes.data) ? roleRes.data : [],
-        experienceDistribution: Array.isArray(experienceRes.data) ? experienceRes.data : [],
-        skillsDistribution: Array.isArray(skillsRes.data) ? skillsRes.data : [],
-        workPreferences: Array.isArray(preferencesRes.data) ? preferencesRes.data : [],
-        dislikedAreas: Array.isArray(dislikesRes.data) ? dislikesRes.data : [],
+        roleDistribution: roleRes.data || [],
+        experienceDistribution: experienceRes.data || [],
+        skillsDistribution: skillsRes.data || [],
+        workPreferences: preferencesRes.data || [],
+        dislikedAreas: dislikesRes.data || [],
         departmentDistribution: departmentRes.data || {
           totalUsers: 0,
           roleDistribution: [],
@@ -98,17 +99,12 @@ export const useAnalytics = () => {
       setData(analyticsData);
     } catch (err) {
       console.error('Error fetching analytics:', err);
-      
       let errorMessage = 'Failed to fetch analytics data';
       
       if (err instanceof Error) {
         errorMessage = err.message;
-      } else if (err instanceof AxiosError) {
-        if (err.response?.status === 401) {
-          errorMessage = 'Session expired. Please login again.';
-        } else if (err.response?.data?.message) {
-          errorMessage = err.response.data.message;
-        }
+      } else if (err instanceof AxiosError && err.response?.data?.error) {
+        errorMessage = err.response.data.error;
       }
       
       setError(errorMessage);
