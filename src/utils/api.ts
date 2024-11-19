@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ApiResponse, AuthResponse, SignInData, SignUpData } from '@/types/api'
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const BASE_URL = '/.netlify/functions'
 
 class ApiClient {
   private client: AxiosInstance
@@ -30,7 +30,7 @@ class ApiClient {
     )
 
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => response.data,
       (error) => {
         if (error.response?.status === 401) {
           localStorage.removeItem('token')
@@ -51,49 +51,80 @@ class ApiClient {
     }
   }
 
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.client.get<ApiResponse<T>>(url, config)
-      return response.data
-    } catch (error) {
-      return this.handleError(error)
-    }
-  }
-
-  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.client.post<ApiResponse<T>>(url, data, config)
-      return response.data
-    } catch (error) {
-      return this.handleError(error)
-    }
-  }
-
-  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.client.put<ApiResponse<T>>(url, data, config)
-      return response.data
-    } catch (error) {
-      return this.handleError(error)
-    }
-  }
-
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.client.delete<ApiResponse<T>>(url, config)
-      return response.data
-    } catch (error) {
-      return this.handleError(error)
-    }
-  }
-
-  // Auth methods
+  // Auth endpoints
   async signIn(data: SignInData): Promise<AuthResponse> {
-    return this.post<AuthResponse>('/auth/signin', data)
+    try {
+      const response = await this.client.post('/auth/signin', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return this.handleError(error)
+    }
   }
 
   async signUp(data: SignUpData): Promise<AuthResponse> {
-    return this.post<AuthResponse>('/auth/signup', data)
+    try {
+      const response = await this.client.post('/auth/signup', data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return this.handleError(error)
+    }
+  }
+
+  // Analytics endpoints
+  analytics = {
+    roleDistribution: async () => {
+      try {
+        const response = await this.client.get('/analytics/roles')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    experienceDistribution: async () => {
+      try {
+        const response = await this.client.get('/analytics/experience')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    skillsDistribution: async () => {
+      try {
+        const response = await this.client.get('/analytics/skills')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    workPreferences: async () => {
+      try {
+        const response = await this.client.get('/analytics/preferences')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    dislikedAreas: async () => {
+      try {
+        const response = await this.client.get('/analytics/dislikes')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    departmentDistribution: async () => {
+      try {
+        const response = await this.client.get('/analytics/departments')
+        return { success: true, data: response.data }
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
   }
 
   async signOut(): Promise<ApiResponse<void>> {
