@@ -22,8 +22,35 @@ app.use(cors({
 app.use(express.json());
 
 // Health check route
-router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+router.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    
+    // Get database stats
+    const dbStats = await mongoose.connection.db.stats();
+    
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      database: {
+        status: dbStatus,
+        name: mongoose.connection.name,
+        collections: dbStats.collections,
+        documents: dbStats.objects
+      }
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ 
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: {
+        status: 'error',
+        error: error.message
+      }
+    });
+  }
 });
 
 // Routes
