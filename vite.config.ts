@@ -1,33 +1,33 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/',
+  resolve: {
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, 'src') },
+      { find: '@components', replacement: path.resolve(__dirname, 'src/components') },
+      { find: '@contexts', replacement: path.resolve(__dirname, 'src/contexts') },
+      { find: '@utils', replacement: path.resolve(__dirname, 'src/utils') }
+    ]
+  },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
+    sourcemap: true,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-avatar', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot', '@radix-ui/react-tooltip'],
+          ui: ['@headlessui/react', '@radix-ui/react-avatar', '@radix-ui/react-dropdown-menu'],
           charts: ['chart.js', 'react-chartjs-2'],
-          icons: ['@tabler/icons-react'],
-          utils: ['axios', 'class-variance-authority', 'clsx', 'tailwind-merge']
+          icons: ['@heroicons/react', '@tabler/icons-react'],
+          utils: ['axios', 'zod', 'react-hot-toast']
         },
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
-      }
-    },
-    chunkSizeWarningLimit: 600,
-    sourcemap: true
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+      },
     },
   },
   server: {
@@ -39,8 +39,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8888/.netlify/functions/api',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
-  }
-});
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+})
