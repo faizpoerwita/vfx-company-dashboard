@@ -5,7 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/',
+  base: './',
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(__dirname, 'src') },
@@ -18,6 +18,7 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     chunkSizeWarningLimit: 600,
+    assetsDir: 'assets',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -27,6 +28,9 @@ export default defineConfig({
           icons: ['@heroicons/react', '@tabler/icons-react'],
           utils: ['axios', 'zod', 'react-hot-toast']
         },
+        assetFileNames: 'assets/[name].[hash].[ext]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js',
       },
     },
   },
