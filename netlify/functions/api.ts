@@ -11,14 +11,19 @@ import userRoutes from './routes/users';
 
 dotenv.config();
 
+// Initialize Express app
 const app = express();
 const router = Router();
 
-// Middleware
-app.use(cors({
+// Configure CORS
+const corsOptions = {
   origin: process.env.FRONTEND_URL || '*',
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Basic health check route
@@ -28,7 +33,7 @@ router.get('/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     env: {
-      frontend_url: process.env.FRONTEND_URL || 'not set',
+      frontend_url: process.env.FRONTEND_URL ? 'set' : 'not set',
       node_env: process.env.NODE_ENV || 'not set',
       mongodb_uri: process.env.MONGODB_URI ? 'set' : 'not set'
     }
@@ -43,11 +48,18 @@ const connectDB = async () => {
 
   try {
     console.log('Attempting to connect to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI!);
+    const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+    };
+    
+    await mongoose.connect(process.env.MONGODB_URI!, options as any);
     isConnected = true;
     console.log('Successfully connected to MongoDB');
   } catch (err) {
     console.error('MongoDB connection error:', err);
+    isConnected = false;
     throw err;
   }
 };
@@ -68,24 +80,44 @@ app.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
+// Mount router
 app.use('/.netlify/functions/api', router);
 
 // Handler
 export const handler: Handler = async (event, context) => {
-  console.log('Function invoked:', event.path);
+  // Log incoming request
+  console.log('Function invoked:', {
+    path: event.path,
+    method: event.httpMethod,
+    headers: event.headers
+  });
   
   try {
     // Connect to MongoDB before handling the request
     await connectDB();
     
-    // Serverless handler
-    const result = await serverless(app)(event, context);
-    console.log('Response:', result.statusCode);
+    // Create serverless handler
+    const handler = serverless(app);
+    
+    // Handle request
+    const result = await handler(event, context);
+    
+    // Log response
+    console.log('Response:', {
+      statusCode: result.statusCode,
+      headers: result.headers
+    });
+    
     return result;
   } catch (error) {
     console.error('Handler error:', error);
     return {
       statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': corsOptions.origin,
+        'Access-Control-Allow-Credentials': 'true',
+      },
       body: JSON.stringify({ 
         success: false,
         message: 'Terjadi kesalahan pada server'
