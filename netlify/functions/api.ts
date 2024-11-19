@@ -14,38 +14,16 @@ dotenv.config();
 const app = express();
 const router = Router();
 
-// CORS configuration
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:8888',
-  'https://litevfx.netlify.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
+// Middleware
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: process.env.FRONTEND_URL || '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  maxAge: 86400 // 24 hours
 }));
-
 app.use(express.json());
 
 // Health check route
 router.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    mongodbConnected: mongoose.connection.readyState === 1
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Routes
@@ -62,40 +40,27 @@ mongoose.connect(process.env.MONGODB_URI!)
 // Error handling middleware
 app.use((err: any, req: any, res: any, next: any) => {
   console.error('API Error:', err);
-  
-  if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid token or no token provided'
-    });
-  }
-
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
-      success: false,
-      message: 'CORS origin not allowed'
-    });
-  }
-
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal server error';
-
-  res.status(statusCode).json({ 
-    success: false,
-    message,
-    error: process.env.NODE_ENV === 'development' ? err : undefined
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
 app.use('/.netlify/functions/api', router);
 
+// Handler
 const handler: Handler = async (event, context) => {
-  // Keep alive the function
-  context.callbackWaitsForEmptyEventLoop = false;
-  
-  // Serverless http handler
   const handler = serverless(app);
-  return handler(event, context);
+  try {
+    const result = await handler(event, context);
+    return result;
+  } catch (error) {
+    console.error('Serverless handler error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Internal server error' })
+    };
+  }
 };
 
 export { handler };
