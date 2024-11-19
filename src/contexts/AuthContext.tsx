@@ -104,13 +104,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await axios.post(
         `${API_URL}/auth/signup`,
-        data,
+        {
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          firstName: data.firstName,
+          lastName: data.lastName
+        },
         {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-          },
-          withCredentials: true
+          }
         }
       );
 

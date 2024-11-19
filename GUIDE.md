@@ -217,7 +217,7 @@ const passwordSchema = z
 ```env
 PORT=5000
 MONGODB_URI=mongodb+srv://ilmuwankecil:rahasiafaiz1@cluster0.fta4u.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
-JWT_SECRET=vfx-dashboard-2023-f8a72c1b9d3e4f5689c0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z
+JWT_SECRET=
 NODE_ENV=production
 ```
 

@@ -6,7 +6,8 @@ import { MovingBorder } from "@/components/ui/moving-border";
 import { SpotlightButton } from "@/components/ui/spotlight-button";
 
 export default function SignIn() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState({warning: in the working copy of 'src/pages/auth/SignIn.tsx', LF will be replaced by CRLF the next time Git touches it
+  
     email: '',
     password: '',
   });
