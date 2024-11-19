@@ -127,44 +127,77 @@ export const handler: Handler = async (event, context) => {
         const [departmentStats] = await User.aggregate([
           {
             $facet: {
-              totalUsers: [{ $count: 'count' }],
+              totalUsers: [
+                { $count: 'count' }
+              ],
               roleDistribution: [
-                { $group: { _id: '$role', count: { $sum: 1 } } }
+                { 
+                  $group: { 
+                    _id: '$role', 
+                    count: { $sum: 1 } 
+                  } 
+                }
               ],
               departments: [
-                { $group: { _id: '$department', count: { $sum: 1 } } },
+                { 
+                  $group: { 
+                    _id: '$department', 
+                    count: { $sum: 1 },
+                    users: { $push: '$$ROOT' }
+                  } 
+                },
                 {
-                  $lookup: {
-                    from: 'users',
-                    let: { dept: '$_id' },
-                    pipeline: [
-                      { $match: { $expr: { $eq: ['$department', '$$dept'] } } },
-                      { $group: { _id: '$role', count: { $sum: 1 } } }
-                    ],
-                    as: 'roleBreakdown'
+                  $addFields: {
+                    roleBreakdown: {
+                      $reduce: {
+                        input: '$users',
+                        initialValue: {},
+                        in: {
+                          $mergeObjects: [
+                            '$$value',
+                            {
+                              $literal: {
+                                $concat: [
+                                  '{"',
+                                  '$$this.role',
+                                  '": ',
+                                  { $add: [{ $ifNull: ['$$value.$$this.role', 0] }, 1] },
+                                  '}'
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  $project: {
+                    _id: 1,
+                    count: 1,
+                    roleBreakdown: 1,
+                    users: 0
                   }
                 }
               ]
             }
+          },
+          {
+            $addFields: {
+              totalUsers: { $arrayElemAt: ['$totalUsers.count', 0] }
+            }
           }
         ]);
-
-        const formattedDepartmentStats = {
-          totalUsers: departmentStats.totalUsers[0]?.count || 0,
-          roleDistribution: departmentStats.roleDistribution || [],
-          departments: departmentStats.departments.map((dept: any) => ({
-            ...dept,
-            roleBreakdown: dept.roleBreakdown.reduce((acc: any, role: any) => {
-              acc[role._id] = role.count;
-              return acc;
-            }, {})
-          }))
-        };
 
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify(formattedDepartmentStats),
+          body: JSON.stringify({
+            totalUsers: departmentStats.totalUsers || 0,
+            roleDistribution: departmentStats.roleDistribution || [],
+            departments: departmentStats.departments || []
+          })
         };
 
       default:

@@ -160,10 +160,16 @@ const Analytics = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <StatsCard
+              title="Total Workers"
+              value={data?.departmentDistribution?.totalUsers || 0}
+              description="Active team members"
+              icon={<IconUsers className="w-6 h-6" />}
+            />
+            <StatsCard
               title="Total Roles"
               value={data?.roleDistribution?.length || 0}
               description="Different roles in the company"
-              icon={<IconUsers className="w-6 h-6" />}
+              icon={<IconBuildingSkyscraper className="w-6 h-6" />}
             />
             <StatsCard
               title="Skills Tracked"
@@ -175,13 +181,7 @@ const Analytics = () => {
               title="Experience Levels"
               value={data?.experienceDistribution?.length || 0}
               description="Different experience categories"
-              icon={<IconClock className="w-6 h-6" />}
-            />
-            <StatsCard
-              title="Work Areas"
-              value={data?.workPreferences?.length || 0}
-              description="Distinct work preferences"
-              icon={<IconChartBar className="w-6 h-6" />}
+              icon={<IconTrendingUp className="w-6 h-6" />}
             />
           </div>
 
@@ -207,6 +207,9 @@ const Analytics = () => {
                       <h3 className="text-lg font-semibold text-neutral-200">Total Workers</h3>
                       <p className="text-3xl font-bold text-neutral-100 mt-2">
                         {data?.departmentDistribution?.totalUsers || 0}
+                      </p>
+                      <p className="text-sm text-neutral-400 mt-1">
+                        Across {data?.departmentDistribution?.departments?.length || 0} departments
                       </p>
                     </div>
                   </div>
