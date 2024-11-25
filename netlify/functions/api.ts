@@ -9,6 +9,7 @@ import projectRoutes from './routes/projects';
 import taskRoutes from './routes/tasks';
 import userRoutes from './routes/users';
 import analyticsRoutes from './routes/analytics';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ router.use('/projects', projectRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/users', userRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/admin', adminRoutes);
 
 // Mount router
 app.use('/.netlify/functions/api', router);

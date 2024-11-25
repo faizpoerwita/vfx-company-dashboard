@@ -167,6 +167,36 @@ class ApiClient {
     }
   }
 
+  // Admin endpoints
+  admin = {
+    getUsers: async () => {
+      try {
+        const response = await this.client.get('/admin/users')
+        return response
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    updateUser: async (userId: string, updates: any) => {
+      try {
+        const response = await this.client.put(`/admin/users/${userId}`, updates)
+        return response
+      } catch (error) {
+        return this.handleError(error)
+      }
+    },
+
+    deleteUser: async (userId: string) => {
+      try {
+        const response = await this.client.delete(`/admin/users/${userId}`)
+        return response
+      } catch (error) {
+        return this.handleError(error)
+      }
+    }
+  }
+
   async signOut(): Promise<void> {
     localStorage.removeItem('token')
     window.location.href = '/signin'

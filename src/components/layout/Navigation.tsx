@@ -9,11 +9,14 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { UserGroupIcon } from "@heroicons/react/outline";
 
 export const Navigation = () => {
-  const { signout } = useAuth();
+  const { signout, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -72,7 +75,15 @@ export const Navigation = () => {
       icon: <IconLogout className="h-4 w-4" />,
       onClick: handleLogout,
     },
-  ];
+    user?.role === 'admin' && (
+      {
+        name: "User Management",
+        link: "/admin",
+        icon: <UserGroupIcon className="h-4 w-4" />,
+        onClick: () => handleNavigation('/admin'),
+      }
+    ),
+  ].filter(Boolean);
 
   return <FloatingNav navItems={navItems} />;
 };

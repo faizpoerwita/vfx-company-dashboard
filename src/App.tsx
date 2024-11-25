@@ -25,6 +25,7 @@ const Analytics = lazy(() => import('@/pages/Analytics'));
 const Settings = lazy(() => import('@/pages/Settings'));
 import Signin from '@/pages/Signin';
 import Signup from '@/pages/Signup';
+import Admin from '@/pages/Admin';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -85,6 +86,12 @@ const router = createBrowserRouter(
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin" element={
+        <ProtectedRoute>
+          <Admin />
         </ProtectedRoute>
       } />
 
