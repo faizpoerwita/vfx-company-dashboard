@@ -49,6 +49,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Analytics from '@/components/admin/Analytics';
 
 interface User {
   _id: string;
@@ -162,139 +163,149 @@ const Admin = () => {
             <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-gray-900 p-8">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-50" />
               <div className="relative">
-                {/* Header with Refresh Button */}
-                <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-2xl font-bold text-white">User Management</h1>
-                  <Button onClick={fetchUsers} variant="outline" size="icon" title="Refresh">
-                    <IconRefresh className="h-4 w-4" />
-                  </Button>
+                {/* Analytics Section */}
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold mb-4 text-white">Analytics Dashboard</h2>
+                  <Analytics users={users} />
                 </div>
 
-                {/* Search and Filter Bar */}
-                <div className="flex gap-4 mb-6">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search users..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 bg-gray-800 text-white border-gray-700"
-                      />
-                    </div>
+                {/* User Management Section */}
+                <div>
+                  <h2 className="text-2xl font-bold mb-4 text-white">User Management</h2>
+                  {/* Header with Refresh Button */}
+                  <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold text-white">User Management</h1>
+                    <Button onClick={fetchUsers} variant="outline" size="icon" title="Refresh">
+                      <IconRefresh className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-[120px]">
-                        <IconFilter className="mr-2 h-4 w-4" />
-                        Filter
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[200px]">
-                      <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setFilterRole('')}>
-                        All Roles
-                      </DropdownMenuItem>
-                      {ROLES.map(role => (
-                        <DropdownMenuItem key={role} onClick={() => setFilterRole(role)}>
-                          {role}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setFilterStatus('')}>
-                        All Status
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setFilterStatus('active')}>
-                        Active
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
-                        Inactive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
 
-                {/* Users Table */}
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableCaption>List of all users in the system</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Last Login</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user._id}>
-                          <TableCell>
-                            {user.firstName} {user.lastName}
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            {editingUser === user ? (
-                              <Select
-                                className="bg-gray-800 text-white rounded px-2 py-1"
-                                defaultValue={user.role}
-                                onChange={(e) => handleUpdateUser(user._id, { role: e.target.value })}
-                              >
-                                {ROLES.map((role) => (
-                                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))}
-                              </Select>
-                            ) : (
-                              user.role
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              onClick={() => handleToggleStatus(user._id, user.status)}
-                              className={`px-2 py-1 rounded ${
-                                user.status === 'active'
-                                  ? 'bg-green-500/20 text-green-400'
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}
-                            >
-                              {user.status === 'active' ? (
-                                <IconCheck className="h-4 w-4" />
-                              ) : (
-                                <IconX className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(user.lastLogin).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                onClick={() => setEditingUser(editingUser === user ? null : user)}
-                                className="p-1 hover:bg-gray-700 rounded"
-                              >
-                                <IconEdit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  setUserToDelete(user);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                                className="p-1 hover:bg-red-700 rounded"
-                              >
-                                <IconTrash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                  {/* Search and Filter Bar */}
+                  <div className="flex gap-4 mb-6">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search users..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-9 bg-gray-800 text-white border-gray-700"
+                        />
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-[120px]">
+                          <IconFilter className="mr-2 h-4 w-4" />
+                          Filter
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setFilterRole('')}>
+                          All Roles
+                        </DropdownMenuItem>
+                        {ROLES.map(role => (
+                          <DropdownMenuItem key={role} onClick={() => setFilterRole(role)}>
+                            {role}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setFilterStatus('')}>
+                          All Status
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFilterStatus('active')}>
+                          Active
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
+                          Inactive
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Users Table */}
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableCaption>List of all users in the system</TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Last Login</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.map((user) => (
+                          <TableRow key={user._id}>
+                            <TableCell>
+                              {user.firstName} {user.lastName}
+                            </TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              {editingUser === user ? (
+                                <Select
+                                  className="bg-gray-800 text-white rounded px-2 py-1"
+                                  defaultValue={user.role}
+                                  onChange={(e) => handleUpdateUser(user._id, { role: e.target.value })}
+                                >
+                                  {ROLES.map((role) => (
+                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                  ))}
+                                </Select>
+                              ) : (
+                                user.role
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                onClick={() => handleToggleStatus(user._id, user.status)}
+                                className={`px-2 py-1 rounded ${
+                                  user.status === 'active'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-red-500/20 text-red-400'
+                                }`}
+                              >
+                                {user.status === 'active' ? (
+                                  <IconCheck className="h-4 w-4" />
+                                ) : (
+                                  <IconX className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(user.lastLogin).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button
+                                  onClick={() => setEditingUser(editingUser === user ? null : user)}
+                                  className="p-1 hover:bg-gray-700 rounded"
+                                >
+                                  <IconEdit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                  className="p-1 hover:bg-red-700 rounded"
+                                >
+                                  <IconTrash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </div>
