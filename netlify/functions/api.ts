@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import express, { Router } from 'express';
+import express, { Router, Request, Response, NextFunction } from 'express';
 import serverless from 'serverless-http';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -8,6 +8,7 @@ import authRoutes from './routes/auth';
 import projectRoutes from './routes/projects';
 import taskRoutes from './routes/tasks';
 import userRoutes from './routes/users';
+import analyticsRoutes from './routes/analytics';
 
 dotenv.config();
 
@@ -51,22 +52,15 @@ const connectDB = async () => {
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      family: 4,
-      retryWrites: true,
-      w: 'majority',
-      ssl: true,
-      authSource: 'admin'
+      serverSelectionTimeoutMS: 5000,
     };
-    
-    await mongoose.connect(process.env.MONGODB_URI!, options as any);
+
+    await mongoose.connect(process.env.MONGODB_URI!, options);
     isConnected = true;
-    console.log('Successfully connected to MongoDB');
-  } catch (err) {
-    console.error('MongoDB connection error:', err);
-    isConnected = false;
-    throw err;
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
   }
 };
 
@@ -75,59 +69,40 @@ router.use('/auth', authRoutes);
 router.use('/projects', projectRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/users', userRoutes);
-
-// Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error('API Error:', err);
-  res.status(500).json({ 
-    success: false,
-    message: 'Terjadi kesalahan pada server',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+router.use('/analytics', analyticsRoutes);
 
 // Mount router
 app.use('/.netlify/functions/api', router);
 
-// Handler
-export const handler: Handler = async (event, context) => {
-  // Log incoming request
-  console.log('Function invoked:', {
-    path: event.path,
-    method: event.httpMethod,
-    headers: event.headers
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
-  
+});
+
+// Handler
+const handler: Handler = async (event, context) => {
+  // Make sure to connect to MongoDB before handling the request
   try {
-    // Connect to MongoDB before handling the request
     await connectDB();
-    
-    // Create serverless handler
-    const handler = serverless(app);
-    
-    // Handle request
-    const result = await handler(event, context);
-    
-    // Log response
-    console.log('Response:', {
-      statusCode: result.statusCode,
-      headers: result.headers
-    });
-    
-    return result;
   } catch (error) {
-    console.error('Handler error:', error);
+    console.error('Failed to connect to MongoDB:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': corsOptions.origin,
-        'Access-Control-Allow-Credentials': 'true',
-      },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: false,
-        message: 'Terjadi kesalahan pada server'
+        message: 'Database connection failed'
       })
     };
   }
+
+  // Serverless http handler
+  const serverlessHandler = serverless(app);
+  return serverlessHandler(event, context);
 };
+
+export { handler };

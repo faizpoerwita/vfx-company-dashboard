@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.0.23] - 2024-01-20
+
+### Fixed
+- Analytics Role Users Modal
+  - Fixed error handling for undefined user names in RoleUsersModal
+  - Made firstName and lastName fields optional in User interface
+  - Added null checks for user name properties
+  - Improved display fallbacks for missing user data
+  - Enhanced search functionality to handle incomplete user data
+
+### Technical Details
+- User Interface Updates
+  - Updated User interface to make name fields optional
+  - Added proper TypeScript optional chaining for name properties
+  - Implemented fallback empty strings for name displays
+
+- RoleUsersModal Component Improvements
+  - Added robust error handling for undefined name properties
+  - Updated search filter to handle missing name data
+  - Maintained visual consistency while handling incomplete data
+  - Enhanced type safety in user data handling
+
+## [1.0.22] - 2024-01-19
+
+### Fixed
+- Profile Update Validation
+  - Fixed experience level validation mismatch between frontend and backend
+  - Updated User model schema to properly handle skills and work preferences
+  - Added comprehensive validation for profile data structure
+  - Improved error handling and logging in profile update route
+
+### Technical Details
+- User Model Schema Updates
+  - Added proper schema for skills with name and level validation
+  - Added schema for workPreferences with name and value validation
+  - Updated experience level enum to match frontend values
+  - Removed deprecated preferredWorkAreas field
+
+- Profile Update Route Enhancements
+  - Added detailed validation for skills and work preferences
+  - Improved error messages and logging
+  - Updated allowed fields list to match new schema
+  - Enhanced response structure with proper field mapping
+
+### Language
+- Updated Indonesian validation messages:
+  - "Data skills tidak valid" for invalid skills data
+  - "Data preferensi kerja tidak valid" for invalid work preferences
+  - "Level pengalaman tidak valid" for invalid experience level
+
 ## [1.0.21] - 2024-01-19
 
 ### Fixed
@@ -364,3 +414,31 @@
   - Added form validation
   - Implemented profile data management
   - Enhanced user feedback with toast messages
+
+## [0.2.2] - 2024-01-25
+
+### Fixed
+- Fixed profile update functionality with proper page refresh
+- Removed hardcoded role skills section from profile page
+- Fixed icon imports in Profile component
+- Improved profile page layout and styling
+
+### Changed
+- Enhanced profile header with cleaner layout
+- Better loading states for profile updates
+- Improved error handling with descriptive messages
+- Updated button styling for better user experience
+
+## [0.2.1] - 2024-01-25
+
+### Fixed
+- Profile update functionality now properly refreshes the page after successful updates
+- Added null checks and validation for profile data fields
+- Improved error handling for profile updates with more descriptive messages
+- Fixed profile data persistence issues after form submission
+
+### Changed
+- Enhanced profile update workflow with automatic page refresh
+- Improved data validation for profile fields (firstName, lastName, bio, etc.)
+- Better handling of optional fields in profile form
+- Added proper navigation after profile updates

@@ -7,8 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface User {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   role: string;
   department?: string;
@@ -33,7 +33,7 @@ export function RoleUsersModal({ isOpen, onClose, role, users, loading }: RoleUs
   // Filter users based on search and department
   const filteredUsers = users?.filter(user => {
     const matchesSearch = searchQuery === '' || 
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesDepartment = !selectedDepartment || user.department === selectedDepartment;
@@ -160,12 +160,12 @@ export function RoleUsersModal({ isOpen, onClose, role, users, loading }: RoleUs
                               <div className="bg-neutral-950 rounded-lg p-4 sm:p-5">
                                 <div className="flex items-start gap-4">
                                   <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
-                                    {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                                    {(user.firstName?.charAt(0) || '') + (user.lastName?.charAt(0) || '')}
                                   </div>
                                   <div className="flex-grow min-w-0">
                                     <div className="flex items-baseline gap-2">
                                       <h3 className="text-base sm:text-lg font-semibold text-neutral-200 truncate">
-                                        {user.firstName} {user.lastName}
+                                        {(user.firstName || '')} {(user.lastName || '')}
                                       </h3>
                                       {user.status && (
                                         <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${

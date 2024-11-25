@@ -5,8 +5,16 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["express", "mongoose", "jsonwebtoken", "bcryptjs"]
+  external_node_modules = ["express", "mongoose", "jsonwebtoken", "bcryptjs", "bcrypt"]
   included_files = ["netlify/functions/**/*"]
+
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  publish = "dist"
+  framework = "vite"
+  autoLaunch = true
 
 [[redirects]]
   from = "/api/*"
@@ -20,10 +28,3 @@
 
 [build.environment]
   NODE_VERSION = "18"
-
-[dev]
-  framework = "#custom"
-  command = "npm run dev"
-  targetPort = 5173
-  port = 8888
-  publish = "dist"

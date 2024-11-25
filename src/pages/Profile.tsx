@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import security from '@/utils/security';
+import { api } from '@/utils/api';
 import { toast } from 'react-hot-toast';
 import { z } from 'zod';
 import { ROLES, RoleType } from '@/constants/roles';
-import { api } from '@/utils/api';
 import { Navigation } from '@/components/layout/Navigation';
 import { BackgroundBeams } from '@/components/ui/aceternity/background-beams';
 import { HoverEffect } from '@/components/ui/aceternity/hover-effect';
 import { CardBody } from '@/components/ui/aceternity/card-body';
 import { Button } from '@/components/ui/aceternity/button';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Check } from 'lucide-react';
 import {
   UserCircleIcon,
   BriefcaseIcon,
   AcademicCapIcon,
   DocumentTextIcon,
   PencilIcon,
-  CheckIcon,
 } from '@heroicons/react/24/outline';
 
 import { WORK_PREFERENCES, transformPreferencesForBackend, transformPreferencesForFrontend, dislikedWorkAreas } from '@/constants/preferences';
@@ -42,10 +42,41 @@ interface ProfileFormData {
   portfolio: string;
   bio: string;
   onboardingCompleted: boolean;
-  dislikes: string[]; // Added dislikes field
+  dislikes: string[];
+  role: string;
 }
 
-// Menggunakan kategori skill yang sama dari Onboarding
+// Initial form data
+const initialFormData: ProfileFormData = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  skills: [],
+  workPreferences: [],
+  experienceLevel: 'Beginner',
+  portfolio: '',
+  bio: '',
+  onboardingCompleted: false,
+  dislikes: [],
+  role: ''
+};
+
+const profileSchema = z.object({
+  firstName: z.string().min(2, 'Nama depan minimal 2 karakter'),
+  lastName: z.string().min(2, 'Nama belakang minimal 2 karakter'),
+  skills: z.array(z.object({
+    name: z.string(),
+    level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'])
+  })),
+  workPreferences: z.array(z.object({
+    name: z.string(),
+    value: z.string()
+  })),
+  experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert']),
+  portfolio: z.string().url().optional(),
+  bio: z.string().max(500, 'Bio maksimal 500 karakter'),
+});
+
 const skillCategories: Record<RoleType, string[]> = {
   [ROLES.THREE_D_ARTIST]: [
     'Modeling', 'Texturing', 'UV Mapping', 'Lighting', 'Rendering',
@@ -76,39 +107,12 @@ const experienceLevels = [
   { value: 'Advanced', label: 'Senior (5+ tahun)' }
 ];
 
-const profileSchema = z.object({
-  firstName: z.string().min(2, 'Nama depan minimal 2 karakter'),
-  lastName: z.string().min(2, 'Nama belakang minimal 2 karakter'),
-  skills: z.array(z.object({
-    name: z.string(),
-    level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert'])
-  })),
-  workPreferences: z.array(z.object({
-    name: z.string(),
-    value: z.string()
-  })),
-  experienceLevel: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Expert']),
-  portfolio: z.string().url().optional(),
-  bio: z.string().max(500, 'Bio maksimal 500 karakter'),
-});
-
-const initialFormData: ProfileFormData = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  skills: [],
-  workPreferences: [],
-  experienceLevel: 'Beginner',
-  portfolio: '',
-  bio: '',
-  onboardingCompleted: false,
-  dislikes: [] // Initialize dislikes as empty array
-};
-
 const Profile = () => {
   const { user, updateProfile } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
 
   // Update form data when user data changes
@@ -126,53 +130,49 @@ const Profile = () => {
         portfolio: user?.portfolio || '',
         bio: user?.bio || '',
         onboardingCompleted: user?.onboardingCompleted || false,
-        dislikes: user?.dislikes || [] // Initialize dislikes from user data
+        dislikes: user?.dislikes || [],
+        role: user?.role || ''
       });
     }
   }, [user]);
 
   useEffect(() => {
-    fetchProfile();
+    fetchProfileData();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfileData = async () => {
     try {
       setLoading(true);
-      const data = await API.getProfile();
-      console.log('Raw profile data:', data);
+      const response = await api.auth.getProfile();
       
-      if (!data) {
-        throw new Error('No profile data received');
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to fetch profile');
       }
+
+      const data = response.data;
+      console.log('Raw profile data:', data);
 
       // Convert skills array if needed
       const formattedSkills = Array.isArray(data.skills) 
         ? data.skills.map(skill => typeof skill === 'string' ? { name: skill, level: 'Beginner' } : skill)
         : [];
 
-      // Convert work preferences if needed
-      const formattedPreferences = transformPreferencesForFrontend(data.workPreferences || []);
-
       setFormData({
         firstName: data.firstName || '',
         lastName: data.lastName || '',
         email: data.email || '',
         skills: formattedSkills,
-        workPreferences: formattedPreferences,
+        workPreferences: Array.isArray(data.workPreferences) ? data.workPreferences : [],
         experienceLevel: data.experienceLevel || 'Beginner',
         portfolio: data.portfolio || '',
         bio: data.bio || '',
         onboardingCompleted: data.onboardingCompleted || false,
-        dislikes: data.dislikes || [] // Initialize dislikes from API data
+        dislikes: Array.isArray(data.dislikes) ? data.dislikes : [],
+        role: data.role || ''
       });
     } catch (error) {
-      console.error('Profile fetch error:', {
-        error,
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      toast.error('Gagal memuat data profil');
+      console.error('Profile fetch error:', error);
+      toast.error('Failed to fetch profile data');
     } finally {
       setLoading(false);
     }
@@ -180,43 +180,60 @@ const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     try {
-      const validatedData = profileSchema.parse(formData);
-      console.log('Submitting profile data:', validatedData);
-      
-      // Transform data to match backend schema
-      const transformedData = {
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        email: validatedData.email,
-        skills: validatedData.skills.map(skill => ({
-          name: skill.name,
-          level: skill.level
-        })),
-        workPreferences: transformPreferencesForBackend(validatedData.workPreferences),
-        experienceLevel: validatedData.experienceLevel,
-        portfolio: validatedData.portfolio || '',
-        bio: validatedData.bio,
-        dislikes: validatedData.dislikes // Include dislikes in transformed data
+      setSubmitting(true);
+
+      // Transform data to match backend schema with null checks
+      const updateData = {
+        firstName: formData.firstName?.trim() || '',
+        lastName: formData.lastName?.trim() || '',
+        bio: formData.bio?.trim() || '',
+        experienceLevel: formData.experienceLevel || 'Beginner',
+        portfolio: formData.portfolio?.trim() || '',
+        skills: (formData.skills || [])
+          .filter(skill => skill && skill.name && skill.name.trim() !== '')
+          .map(skill => ({
+            name: skill.name.trim(),
+            level: skill.level || 'Beginner'
+          })),
+        workPreferences: (formData.workPreferences || [])
+          .filter(pref => pref && pref.name && pref.name.trim() !== '')
+          .map(pref => ({
+            name: pref.name.trim(),
+            value: (pref.value || '').trim()
+          })),
+        onboardingCompleted: Boolean(formData.onboardingCompleted)
       };
 
-      console.log('Transformed data for backend:', transformedData);
+      console.log('Sending profile update:', updateData);
+      const response = await api.auth.updateProfile(updateData);
       
-      setLoading(true);
-      await updateProfile(transformedData);
-      toast.success('Profil berhasil diperbarui');
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update profile');
+      }
+
+      toast.success('Profile updated successfully');
+      
+      // Update user context if needed
+      if (updateProfile) {
+        await updateProfile(updateData);
+      }
+
+      // Refetch profile data and redirect
+      await fetchProfileData();
       setIsEditing(false);
+      navigate('/profile', { replace: true });
+      
     } catch (error) {
       console.error('Profile update error:', error);
-      if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          toast.error(`${err.path.join('.')}: ${err.message}`);
-        });
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
       } else {
-        toast.error(error.message || 'Gagal memperbarui profil');
+        toast.error('Failed to update profile');
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -272,22 +289,27 @@ const Profile = () => {
             <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-gray-900 p-8">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 opacity-50" />
               <div className="relative flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <UserCircleIcon className="h-16 w-16 text-white" />
-                  <div>
-                    <h1 className="text-2xl font-bold text-white">
-                      {formData.firstName} {formData.lastName}
-                    </h1>
-                    <p className="text-slate-400">{user?.email}</p>
-                  </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">
+                    {formData.firstName} {formData.lastName}
+                  </h1>
+                  <p className="mt-1 text-sm text-gray-400">
+                    {formData.email}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    {formData.bio || 'No bio added yet'}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Role: {formData.role || 'Not specified'}
+                  </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex space-x-3">
                   {isEditing ? (
                     <>
                       <Button
                         onClick={() => {
                           setIsEditing(false);
-                          fetchProfile(); // Reset to original data
+                          fetchProfileData(); // Reset to original data
                         }}
                         className="flex items-center space-x-2 bg-zinc-800 hover:bg-zinc-700"
                       >
@@ -295,18 +317,28 @@ const Profile = () => {
                       </Button>
                       <Button
                         onClick={handleSubmit}
-                        className="flex items-center space-x-2"
+                        disabled={submitting}
+                        className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500"
                       >
-                        <CheckIcon className="h-5 w-5" />
-                        <span>Save</span>
+                        {submitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>Save Changes</span>
+                          </>
+                        )}
                       </Button>
                     </>
                   ) : (
                     <Button
                       onClick={() => setIsEditing(true)}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500"
                     >
-                      <PencilIcon className="h-5 w-5" />
+                      <PencilIcon className="h-4 w-4" />
                       <span>Edit Profile</span>
                     </Button>
                   )}
@@ -390,7 +422,7 @@ const Profile = () => {
                           placeholder="Ceritakan sedikit tentang diri Anda..."
                         />
                       ) : (
-                        <p className="text-slate-400">{formData.bio || 'No bio added yet.'}</p>
+                        <p className="text-slate-400">{formData.bio || 'No bio added yet'}</p>
                       )}
                     </div>
                   </div>
@@ -586,23 +618,6 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      {user?.role && (
-        <div className="space-y-4">
-          <p className="text-gray-400">
-            Role: {user.role}
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {skillCategories[user.role as RoleType]?.map(skill => (
-              <div
-                key={skill}
-                className="px-4 py-2 rounded-lg border bg-blue-500/20 border-blue-500 text-blue-400"
-              >
-                {skill}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

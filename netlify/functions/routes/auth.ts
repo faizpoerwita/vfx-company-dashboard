@@ -208,17 +208,21 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Profile update endpoint
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const updates = req.body;
-    delete updates.password; // Don't allow password updates through this endpoint
+    const userId = req.user.userId;
+    const updateData = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { $set: updates },
-      { new: true }
-    ).select('-password');
+    // Log update request
+    console.log('Profile update request:', {
+      userId,
+      updateData,
+      headers: req.headers
+    });
 
+    // Find and update user
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -226,15 +230,112 @@ router.put('/profile', authenticateToken, async (req, res) => {
       });
     }
 
+    // Validate experience level
+    if (updateData.experienceLevel && !['Beginner', 'Intermediate', 'Advanced', 'Expert'].includes(updateData.experienceLevel)) {
+      console.log('Invalid experience level:', updateData.experienceLevel);
+      return res.status(400).json({
+        success: false,
+        message: 'Level pengalaman tidak valid'
+      });
+    }
+
+    // Validate skills
+    if (updateData.skills) {
+      const validSkills = updateData.skills.every(skill => 
+        skill.name && 
+        typeof skill.name === 'string' &&
+        skill.level &&
+        ['Beginner', 'Intermediate', 'Advanced', 'Expert'].includes(skill.level)
+      );
+
+      if (!validSkills) {
+        console.log('Invalid skills data:', updateData.skills);
+        return res.status(400).json({
+          success: false,
+          message: 'Data skills tidak valid'
+        });
+      }
+    }
+
+    // Validate work preferences
+    if (updateData.workPreferences) {
+      const validPreferences = updateData.workPreferences.every(pref => 
+        pref.name && 
+        typeof pref.name === 'string' &&
+        pref.value &&
+        typeof pref.value === 'string'
+      );
+
+      if (!validPreferences) {
+        console.log('Invalid work preferences data:', updateData.workPreferences);
+        return res.status(400).json({
+          success: false,
+          message: 'Data preferensi kerja tidak valid'
+        });
+      }
+    }
+
+    // Update fields
+    const allowedFields = [
+      'firstName',
+      'lastName',
+      'bio',
+      'skills',
+      'experienceLevel',
+      'portfolio',
+      'workPreferences',
+      'dislikedWorkAreas',
+      'onboardingCompleted'
+    ];
+
+    // Update fields and log changes
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        console.log(`Updating field ${field}:`, {
+          old: user[field],
+          new: updateData[field]
+        });
+        user[field] = updateData[field];
+      }
+    });
+
+    // Save updated user
+    await user.save();
+
+    // Send response
     res.json({
       success: true,
-      user
+      message: 'Profil berhasil diperbarui',
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        bio: user.bio,
+        skills: user.skills,
+        experienceLevel: user.experienceLevel,
+        portfolio: user.portfolio,
+        workPreferences: user.workPreferences,
+        dislikedWorkAreas: user.dislikedWorkAreas,
+        onboardingCompleted: user.onboardingCompleted
+      }
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error('Profile update error:', error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Data tidak valid',
+        details: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat memperbarui profil'
+      message: 'Terjadi kesalahan saat memperbarui profil',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

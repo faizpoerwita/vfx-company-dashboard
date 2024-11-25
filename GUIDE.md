@@ -45,27 +45,104 @@ PUT  /auth/profile    // Update user profile
 
 ```javascript
 {
-  firstName: String,
-  lastName: String,
-  email: String,          // Required, unique
-  password: String,       // Required, hashed
-  role: String,          // Required, enum
-  phone: String,
-  bio: String,
+  firstName: String,       // Required for profile
+  lastName: String,       // Required for profile
+  email: String,         // Required, unique
+  password: String,      // Required, hashed
+  role: {
+    type: String,
+    enum: ['3D Artist', 'Animator', 'Compositor', 'VFX Supervisor', 'Producer', 'admin']
+  },
+  experienceLevel: {
+    type: String,
+    enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert']
+  },
   skills: [{
-    name: String,
-    level: String        // enum: ['Beginner'...'Expert']
+    name: String,        // Required
+    level: {
+      type: String,
+      enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert']
+    }
   }],
   workPreferences: [{
-    name: String,
-    value: String
+    name: String,        // Required
+    value: String        // Required
   }],
-  learningInterests: String,
+  dislikedWorkAreas: [String],
+  bio: String,
   portfolio: String,
-  onboardingCompleted: Boolean,
-  lastLogin: Date
+  onboardingCompleted: Boolean
 }
 ```
+
+### Profile Update Validation
+
+The profile update endpoint (`PUT /auth/profile`) validates the following:
+
+1. Experience Level
+   - Must be one of: 'Beginner', 'Intermediate', 'Advanced', 'Expert'
+
+2. Skills
+   - Each skill must have:
+     * name (string)
+     * level (one of: 'Beginner', 'Intermediate', 'Advanced', 'Expert')
+
+3. Work Preferences
+   - Each preference must have:
+     * name (string)
+     * value (string)
+
+4. Required Fields for Profile Completion
+   - firstName
+   - lastName
+   - experienceLevel
+   - skills
+   - workPreferences
+   - bio
+
+Error messages are returned in Indonesian:
+- "Data skills tidak valid"
+- "Data preferensi kerja tidak valid"
+- "Level pengalaman tidak valid"
+
+## Profile Management
+
+### Updating Your Profile
+
+1. Navigate to the Profile page
+2. Click the "Edit Profile" button
+3. Update your information:
+   - Personal details (name, bio)
+   - Experience level
+   - Skills (with proficiency levels)
+   - Work preferences
+   - Portfolio link
+4. Click "Save Changes"
+
+The system will automatically:
+- Validate your input
+- Save your changes
+- Refresh the page to show updated information
+
+### Profile Fields
+
+- **First Name & Last Name**: Your full name
+- **Bio**: A brief description about yourself
+- **Experience Level**: 
+  - Beginner (0-2 years)
+  - Intermediate (2-5 years)
+  - Advanced (5+ years)
+- **Skills**: Add multiple skills with proficiency levels
+- **Work Preferences**: Your preferred working conditions
+- **Portfolio**: Link to your work portfolio (optional)
+
+### Data Validation
+
+The system automatically:
+- Trims whitespace from text fields
+- Removes empty skill entries
+- Sets default values for optional fields
+- Validates data format before submission
 
 ## 🛡 Security Features
 
@@ -571,3 +648,50 @@ BackgroundGradient:
 - Mouse tracking
 - Smooth animations
 - Custom container support
+
+## 🔄 Handling Optional User Data
+
+### User Interface
+
+The User interface includes optional fields that may not be available for all users:
+
+```typescript
+interface User {
+  _id: string;
+  firstName?: string;      // Optional
+  lastName?: string;       // Optional
+  email: string;          // Required
+  role: string;           // Required
+  department?: string;    // Optional
+  status?: 'active' | 'inactive';  // Optional
+}
+```
+
+### Best Practices for Optional Fields
+
+1. **Name Display**
+   ```typescript
+   // Use optional chaining and fallback empty strings
+   const initials = (user.firstName?.charAt(0) || '') + (user.lastName?.charAt(0) || '');
+   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+   ```
+
+2. **Search Implementation**
+   ```typescript
+   // Handle missing name fields in search
+   const searchString = `${user.firstName || ''} ${user.lastName || ''} ${user.email}`.toLowerCase();
+   return searchString.includes(searchTerm.toLowerCase());
+   ```
+
+3. **UI Fallbacks**
+   - Always provide fallback UI for missing optional data
+   - Use empty strings as fallbacks instead of undefined
+   - Maintain visual consistency regardless of data completeness
+
+### Component Examples
+
+The RoleUsersModal component demonstrates these practices:
+- Handles undefined name properties gracefully
+- Provides consistent UI with missing data
+- Implements robust search across all user fields
+- Uses TypeScript optional chaining for type safety

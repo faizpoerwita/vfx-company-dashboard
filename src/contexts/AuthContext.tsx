@@ -42,7 +42,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const user = await fetchUserData(token);
-      setUser(user);
+      if (user) {
+        setUser(user);
+      } else {
+        // If no user data, clear token
+        localStorage.removeItem('token');
+      }
     } catch (error) {
       console.error('Auth check error:', error);
       localStorage.removeItem('token');
@@ -102,13 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (data: SignupData): Promise<void> => {
     try {
-      // Log request data
-      console.log('Sending signup request with data:', {
-        email: data.email,
-        role: data.role,
-        hasPassword: !!data.password
-      });
-
       const response = await axios.post(
         `${API_URL}/auth/signup`,
         {
@@ -199,34 +197,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signout = async (): Promise<void> => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await axios.post(`${API_URL}/auth/signout`, null, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Signout error:', error);
-    } finally {
       localStorage.removeItem('token');
       setUser(null);
+    } catch (error) {
+      console.error('Signout error:', error);
+      throw error;
     }
   };
 
-  const fetchUserData = async (token: string): Promise<User> => {
-    const response = await axios.get(`${API_URL}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
+  const fetchUserData = async (token: string): Promise<User | null> => {
+    try {
+      const response = await axios.get(`${API_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch user data');
       }
-    });
 
-    if (!response.data || !response.data.success) {
-      throw new Error('Failed to fetch user data');
+      return response.data.user;
+    } catch (error) {
+      console.error('Fetch user data error:', error);
+      return null;
     }
-
-    return response.data.user;
   };
 
   return (
@@ -237,7 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signup,
       signout,
       updateProfile,
-      isAuthenticated: !!user
+      isAuthenticated: !!user && !!localStorage.getItem('token')
     }}>
       {children}
     </AuthContext.Provider>
