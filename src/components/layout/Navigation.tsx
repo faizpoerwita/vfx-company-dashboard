@@ -11,7 +11,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { UserGroupIcon } from "@heroicons/react/outline";
 
 export const Navigation = () => {
   const { signout, user } = useAuth();
@@ -28,13 +27,12 @@ export const Navigation = () => {
   };
 
   const handleNavigation = (path: string) => {
-    console.log('Navigating to:', path);
     navigate(path);
   };
 
   const navItems = [
     {
-      name: "Dashboard",
+      name: "Beranda",
       link: "/dashboard",
       icon: <IconHome className="h-4 w-4" />,
       onClick: () => handleNavigation('/dashboard'),
@@ -52,16 +50,16 @@ export const Navigation = () => {
       onClick: () => handleNavigation('/team'),
     },
     {
-      name: "Analytics",
-      link: "/analytics",
-      icon: <IconChartBar className="h-4 w-4" />,
-      onClick: () => handleNavigation('/analytics'),
-    },
-    {
       name: "Profile",
       link: "/profile",
       icon: <IconUser className="h-4 w-4" />,
       onClick: () => handleNavigation('/profile'),
+    },
+    {
+      name: "Analytics",
+      link: "/analytics",
+      icon: <IconChartBar className="h-4 w-4" />,
+      onClick: () => handleNavigation('/analytics'),
     },
     {
       name: "Settings",
@@ -75,14 +73,12 @@ export const Navigation = () => {
       icon: <IconLogout className="h-4 w-4" />,
       onClick: handleLogout,
     },
-    user?.role === 'admin' && (
-      {
-        name: "User Management",
-        link: "/admin",
-        icon: <UserGroupIcon className="h-4 w-4" />,
-        onClick: () => handleNavigation('/admin'),
-      }
-    ),
+    user?.role === 'admin' && {
+      name: "User Management",
+      link: "/admin",
+      icon: <IconUsers className="h-4 w-4" />,
+      onClick: () => handleNavigation('/admin'),
+    },
   ].filter(Boolean);
 
   return <FloatingNav navItems={navItems} />;
