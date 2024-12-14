@@ -54,6 +54,27 @@ class ApiClient {
     }
   }
 
+  // Generic request methods
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.get<T>(url, config)
+    return response.data
+  }
+
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.post<T>(url, data, config)
+    return response.data
+  }
+
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.put<T>(url, data, config)
+    return response.data
+  }
+
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.delete<T>(url, config)
+    return response.data
+  }
+
   // Auth endpoints
   auth = {
     signIn: async (data: SignInData): Promise<ApiResponse<AuthResponse>> => {
@@ -80,7 +101,6 @@ class ApiClient {
       }
     },
 
-    // Get current user profile
     getProfile: async (): Promise<ApiResponse<any>> => {
       try {
         const response = await this.client.get('/auth/me')
@@ -90,7 +110,6 @@ class ApiClient {
       }
     },
 
-    // Update user profile
     updateProfile: async (data: any): Promise<ApiResponse<any>> => {
       try {
         const response = await this.client.put('/auth/profile', data)
@@ -103,64 +122,37 @@ class ApiClient {
 
   // Analytics endpoints
   analytics = {
-    roleDistribution: async () => {
+    roleDistribution: async (): Promise<ApiResponse<any>> => {
       try {
         const response = await this.client.get('/analytics/role-distribution')
-        return { success: true, data: response }
+        return response
       } catch (error) {
         return this.handleError(error)
       }
     },
 
-    experienceDistribution: async () => {
+    userGrowth: async (): Promise<ApiResponse<any>> => {
       try {
-        const response = await this.client.get('/analytics/experience-distribution')
-        return { success: true, data: response }
+        const response = await this.client.get('/analytics/user-growth')
+        return response
       } catch (error) {
         return this.handleError(error)
       }
     },
 
-    skillsDistribution: async () => {
+    userActivity: async (): Promise<ApiResponse<any>> => {
       try {
-        const response = await this.client.get('/analytics/skills-distribution')
-        return { success: true, data: response }
+        const response = await this.client.get('/analytics/user-activity')
+        return response
       } catch (error) {
         return this.handleError(error)
       }
     },
 
-    workPreferences: async () => {
+    keyMetrics: async (): Promise<ApiResponse<any>> => {
       try {
-        const response = await this.client.get('/analytics/work-preferences')
-        return { success: true, data: response }
-      } catch (error) {
-        return this.handleError(error)
-      }
-    },
-
-    dislikedAreas: async () => {
-      try {
-        const response = await this.client.get('/analytics/disliked-areas')
-        return { success: true, data: response }
-      } catch (error) {
-        return this.handleError(error)
-      }
-    },
-
-    departmentDistribution: async () => {
-      try {
-        const response = await this.client.get('/analytics/department-distribution')
-        return { success: true, data: response }
-      } catch (error) {
-        return this.handleError(error)
-      }
-    },
-
-    getUsersByRole: async (role: string) => {
-      try {
-        const response = await this.client.get(`/analytics/users-by-role/${encodeURIComponent(role)}`)
-        return { success: true, data: response }
+        const response = await this.client.get('/analytics/key-metrics')
+        return response
       } catch (error) {
         return this.handleError(error)
       }

@@ -5,12 +5,14 @@ import React, { useState } from "react";
 
 interface SearchBarProps {
   onSearch: (term: string) => void;
+  value?: string;
   className?: string;
   placeholder?: string;
 }
 
 export const SearchBar = ({ 
   onSearch, 
+  value,
   className,
   placeholder = "Search projects..." 
 }: SearchBarProps) => {
@@ -32,6 +34,7 @@ export const SearchBar = ({
         <IconSearch className="h-5 w-5 text-neutral-400" />
         <input
           type="text"
+          value={value}
           className="ml-3 flex-1 bg-transparent text-sm text-neutral-200 placeholder-neutral-400 outline-none"
           placeholder={placeholder}
           onChange={(e) => onSearch(e.target.value)}
